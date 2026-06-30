@@ -11,6 +11,7 @@ spring:
         max-attempts: 5
         initial-interval: 2000
         multiplier: 1.5
+        max-interval: 30000
 
 eureka:
   client:
