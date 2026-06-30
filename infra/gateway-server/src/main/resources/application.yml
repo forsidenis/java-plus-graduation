@@ -4,17 +4,16 @@ server:
 spring:
   application:
     name: gateway-server
-    config:
-      import: "configserver:"
-    sql:
-      init:
-        mode: always
-        schema-locations: classpath:schema.sql
-        continue-on-error: true
-    jpa:
-      hibernate:
-        ddl-auto: create-drop
-
-  logging:
-    level:
-      ru.practicum: DEBUG
+  config:
+    import: "configserver:"
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: main-service
+          uri: lb://MAIN-SERVICE
+          predicates:
+            - Path=/**
