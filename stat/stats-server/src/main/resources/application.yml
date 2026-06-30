@@ -6,7 +6,15 @@ spring:
     name: stats-server
   config:
     import: "configserver:"
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      continue-on-error: true
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
 
 logging:
   level:
-    ru.practicum.stat: DEBUG
+    ru.practicum: DEBUG

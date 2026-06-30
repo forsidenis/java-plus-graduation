@@ -6,6 +6,14 @@ spring:
     name: main-service
   config:
     import: "configserver:"
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
+      continue-on-error: true
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
 
 logging:
   level:
