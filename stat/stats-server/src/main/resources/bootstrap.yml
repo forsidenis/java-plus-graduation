@@ -12,10 +12,10 @@ spring:
         initial-interval: 2000
         multiplier: 1.5
 
-eureka:
-  client:
-    enabled: true
-    serviceUrl:
-      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
-    register-with-eureka: true
-    fetch-registry: true
+  eureka:
+    client:
+      enabled: true
+      serviceUrl:
+        defaultZone: ${EUREKA_URI:http://localhost:8761/eureka}
+      register-with-eureka: true
+      fetch-registry: true
