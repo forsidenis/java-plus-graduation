@@ -28,7 +28,6 @@ import ru.practicum.stat.dto.EndpointHitDto;
 import ru.practicum.stat.dto.ViewStatsDto;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,8 +44,6 @@ public class EventServiceImpl implements EventService {
     private final CategoryRepository categoryRepository;
     private final RequestRepository requestRepository;
     private final StatsClient statsClient;
-
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
     @Transactional
@@ -168,13 +165,14 @@ public class EventServiceImpl implements EventService {
                     .collect(Collectors.toList());
         }
 
+        saveHit(request);
+
         List<EventShortDto> result = enrichEventsWithStats(events, true);
 
         if (sort != null && sort.equals("VIEWS")) {
             result.sort((a, b) -> Long.compare(b.getViews(), a.getViews()));
         }
 
-        saveHit(request);
         return result;
     }
 
@@ -275,9 +273,10 @@ public class EventServiceImpl implements EventService {
 
     private Long getViewsForEvent(Long eventId, LocalDateTime start) {
         if (start == null) start = LocalDateTime.now().minusYears(10);
+        LocalDateTime startForStats = start.minusSeconds(1);
         List<String> uris = List.of("/events/" + eventId);
         try {
-            List<ViewStatsDto> stats = statsClient.getStats(start, LocalDateTime.now(), uris, true);
+            List<ViewStatsDto> stats = statsClient.getStats(startForStats, LocalDateTime.now().plusSeconds(1), uris, true);
             if (!stats.isEmpty()) {
                 return stats.getFirst().getHits();
             }
@@ -296,8 +295,9 @@ public class EventServiceImpl implements EventService {
                     .timestamp(LocalDateTime.now())
                     .build();
             statsClient.hit(hit);
+            log.debug("Сохранён хит: {}", hit);
         } catch (Exception e) {
-            log.warn("Не удалось сохранить статистику для {}: {}", request.getRequestURI(), e.getMessage());
+            log.warn("Не удалось сохранить статистику для {}: {}", request.getRequestURI(), e.getMessage(), e);
         }
     }
 
@@ -313,7 +313,8 @@ public class EventServiceImpl implements EventService {
         final LocalDateTime earliestStart = events.stream()
                 .map(e -> e.getPublishedOn() != null ? e.getPublishedOn() : e.getCreatedOn())
                 .min(LocalDateTime::compareTo)
-                .orElse(LocalDateTime.now().minusYears(10));
+                .orElse(LocalDateTime.now().minusYears(10))
+                .minusSeconds(1);
 
         final List<String> uris = events.stream()
                 .map(e -> "/events/" + e.getId())
@@ -323,7 +324,7 @@ public class EventServiceImpl implements EventService {
 
         Map<Long, Long> viewsMap;
         try {
-            final List<ViewStatsDto> stats = statsClient.getStats(earliestStart, LocalDateTime.now(), uris, false);
+            final List<ViewStatsDto> stats = statsClient.getStats(earliestStart, LocalDateTime.now().plusSeconds(1), uris, false);
             viewsMap = stats.stream()
                     .collect(Collectors.toMap(
                             v -> Long.parseLong(v.getUri().substring(v.getUri().lastIndexOf('/') + 1)),
@@ -362,7 +363,8 @@ public class EventServiceImpl implements EventService {
         final LocalDateTime earliestStart = events.stream()
                 .map(e -> e.getPublishedOn() != null ? e.getPublishedOn() : e.getCreatedOn())
                 .min(LocalDateTime::compareTo)
-                .orElse(LocalDateTime.now().minusYears(10));
+                .orElse(LocalDateTime.now().minusYears(10))
+                .minusSeconds(1);
 
         final List<String> uris = events.stream()
                 .map(e -> "/events/" + e.getId())
@@ -370,7 +372,7 @@ public class EventServiceImpl implements EventService {
 
         Map<Long, Long> viewsMap;
         try {
-            final List<ViewStatsDto> stats = statsClient.getStats(earliestStart, LocalDateTime.now(), uris, false);
+            final List<ViewStatsDto> stats = statsClient.getStats(earliestStart, LocalDateTime.now().plusSeconds(1), uris, false);
             viewsMap = stats.stream()
                     .collect(Collectors.toMap(
                             v -> Long.parseLong(v.getUri().substring(v.getUri().lastIndexOf('/') + 1)),
