@@ -6,15 +6,24 @@ spring:
     name: stats-server
   config:
     import: "configserver:"
+  datasource:
+    url: jdbc:postgresql://stats-server-db:5432/ewm-stat
+    username: stat
+    password: stat
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: false
   sql:
     init:
       mode: always
       schema-locations: classpath:schema.sql
       continue-on-error: true
-  jpa:
-    hibernate:
-      ddl-auto: create-drop
 
 logging:
   level:
-    ru.practicum: DEBUG
+    ru.practicum.stat: DEBUG
