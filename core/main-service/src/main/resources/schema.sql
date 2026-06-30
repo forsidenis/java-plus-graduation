@@ -13,15 +13,15 @@ CREATE TABLE IF NOT EXISTS events (
     id BIGSERIAL PRIMARY KEY,
     annotation VARCHAR(2000) NOT NULL,
     category_id BIGINT NOT NULL REFERENCES categories(id),
-    created_on TIMESTAMP NOT NULL,
+    created_on TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     description VARCHAR(7000) NOT NULL,
-    event_date TIMESTAMP NOT NULL,
+    event_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     initiator_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     location_lat FLOAT,
     location_lon FLOAT,
     paid BOOLEAN NOT NULL,
     participant_limit INT NOT NULL,
-    published_on TIMESTAMP,
+    published_on TIMESTAMP WITHOUT TIME ZONE,
     request_moderation BOOLEAN NOT NULL,
     state VARCHAR(20) NOT NULL,
     title VARCHAR(120) NOT NULL
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS events (
 
 CREATE TABLE IF NOT EXISTS requests (
     id BIGSERIAL PRIMARY KEY,
-    created TIMESTAMP NOT NULL,
+    created TIMESTAMP WITHOUT TIME ZONE NOT NULL,
     event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     requester_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     status VARCHAR(20) NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS event_ratings (
     event_id BIGINT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     rating_type VARCHAR(10) NOT NULL CHECK (rating_type IN ('LIKE', 'DISLIKE')),
-    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    created TIMESTAMP NOT NULL DEFAULT NOW(),
     UNIQUE(event_id, user_id)
 );
 
