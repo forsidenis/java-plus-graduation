@@ -18,3 +18,7 @@ spring:
 logging:
   level:
     ru.practicum: DEBUG
+
+stats:
+  server:
+    url: ${STATS_SERVER_URL:http://localhost:9090}

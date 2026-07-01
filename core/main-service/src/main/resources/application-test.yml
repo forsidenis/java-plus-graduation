@@ -9,3 +9,7 @@ spring:
     url: jdbc:postgresql://localhost:5432/ewm-main
     username: main
     password: main
+
+stats:
+  server:
+    url: http://localhost:9090
