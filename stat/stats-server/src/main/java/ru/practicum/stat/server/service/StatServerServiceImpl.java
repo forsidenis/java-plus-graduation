@@ -22,10 +22,17 @@ public class StatServerServiceImpl implements StatServerService {
 
     @Transactional
     public EndpointHitDto saveHit(EndpointHitDto dto) {
-        EndpointHit eh = EndpointHitMapper.toEntity(dto);
-        eh = statServerRepository.save(eh);
-        log.debug("Added hit: {}", eh);
-        return EndpointHitMapper.toDto(eh);
+        log.info("Получен hit для сохранения: {}", dto);
+        try {
+            EndpointHit eh = EndpointHitMapper.toEntity(dto);
+            log.info("Преобразовано в сущность: {}", eh);
+            eh = statServerRepository.save(eh);
+            log.info("Сохранён hit с id: {}", eh.getId());
+            return EndpointHitMapper.toDto(eh);
+        } catch (Exception e) {
+            log.error("Ошибка при сохранении hit: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end, List<String> uris, boolean unique) {

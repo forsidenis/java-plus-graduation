@@ -23,7 +23,7 @@ public class StatServerController {
     @PostMapping("/hit")
     @ResponseStatus(HttpStatus.CREATED)
     public EndpointHitDto saveHit(@RequestBody EndpointHitDto dto) {
-        log.debug("PostMapping /hit. dto: {}", dto);
+        log.info("Получен hit: {}", dto);
         return statServerService.saveHit(dto);
     }
 
@@ -39,7 +39,9 @@ public class StatServerController {
                                       List<String> uris,
                                       @RequestParam(name = "unique", defaultValue = "false")
                                       boolean unique) {
-        log.debug("GetMapping /stats. Params: start: {}, end: {}, uris: {}, unique {}", start, end, uris, unique);
-        return statServerService.getStats(start, end, uris, unique);
+        log.info("Запрос статистики: start={}, end={}, uris={}, unique={}", start, end, uris, unique);
+        List<ViewStatsDto> stats = statServerService.getStats(start, end, uris, unique);
+        log.info("Найдено записей: {}", stats.size());
+        return stats;
     }
 }

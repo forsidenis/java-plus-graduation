@@ -26,7 +26,7 @@ public class StatsClient {
     private final RestClient restClient;
     private final DiscoveryClient discoveryClient;
     private final RetryTemplate retryTemplate;
-    private final String statsServiceId = "STATS-SERVER";
+    private final String statsServiceId = "stats-server"; // изменено на строчные
     private final String statsServerUrl;
 
     public StatsClient(DiscoveryClient discoveryClient,
@@ -52,7 +52,7 @@ public class StatsClient {
 
     private URI getServiceUri(String path) {
         if (statsServerUrl != null && !statsServerUrl.isEmpty()) {
-            log.debug("Использование статического URL: {}", statsServerUrl);
+            log.info("Использование статического URL: {}", statsServerUrl);
             return URI.create(statsServerUrl + path);
         }
         if (discoveryClient != null) {
@@ -65,7 +65,7 @@ public class StatsClient {
                     return instances.get(0);
                 });
                 String baseUrl = "http://" + instance.getHost() + ":" + instance.getPort();
-                log.debug("Использование DiscoveryClient: {}", baseUrl);
+                log.info("Использование DiscoveryClient: {}", baseUrl);
                 return URI.create(baseUrl + path);
             } catch (Exception e) {
                 log.error("Не удалось получить URI через DiscoveryClient: {}", e.getMessage());
@@ -79,12 +79,16 @@ public class StatsClient {
     public EndpointHitDto hit(EndpointHitDto hit) {
         try {
             URI uri = getServiceUri("/hit");
-            log.debug("Sending hit to {}", uri);
-            return restClient.post()
+            log.info("Отправка hit в stats-server: URL={}, тело={}", uri, hit);
+
+            EndpointHitDto response = restClient.post()
                     .uri(uri)
                     .body(hit)
                     .retrieve()
                     .body(EndpointHitDto.class);
+
+            log.info("Хит успешно сохранён, ответ: {}", response);
+            return response;
         } catch (Exception e) {
             log.error("Ошибка при отправке hit: {}", e.getMessage(), e);
             throw e;
@@ -102,12 +106,14 @@ public class StatsClient {
                 builder.queryParam("uris", String.join(",", uris));
             }
             URI uri = getServiceUri(builder.build().encode().toUriString());
-            log.debug("Getting stats from {}", uri);
+            log.info("Запрос статистики: URL={}", uri);
 
             ViewStatsDto[] response = restClient.get()
                     .uri(uri)
                     .retrieve()
                     .body(ViewStatsDto[].class);
+
+            log.info("Получена статистика: количество записей = {}", response != null ? response.length : 0);
             return response != null ? Arrays.asList(response) : Collections.emptyList();
         } catch (Exception e) {
             log.error("Ошибка при получении статистики: {}", e.getMessage(), e);
