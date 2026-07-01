@@ -14,15 +14,6 @@ spring:
     url: jdbc:h2:mem:ewm-main
     username: main
     password:
-  cloud:
-    config:
-      enabled: false
-      discovery:
-        enabled: false
-
-eureka:
-  client:
-    enabled: false
 
 stats:
   server:

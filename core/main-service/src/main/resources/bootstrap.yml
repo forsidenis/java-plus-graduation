@@ -1,6 +1,6 @@
 spring:
   application:
-    name: gateway-server
+    name: main-service
   cloud:
     config:
       discovery:

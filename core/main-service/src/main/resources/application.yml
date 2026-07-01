@@ -6,8 +6,6 @@ spring:
     name: main-service
   profiles:
     active: test
-  config:
-    import: "configserver:"
   sql:
     init:
       mode: always
