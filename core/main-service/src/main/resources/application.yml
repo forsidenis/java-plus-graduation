@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: main-service
+  profiles:
+    default: test
   config:
     import: "configserver:"
   sql:
