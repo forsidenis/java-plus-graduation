@@ -5,12 +5,13 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
     properties:
       hibernate:
         format_sql: false
   sql:
     init:
-      mode: always
+      mode: never
   datasource:
     driver-class-name: org.h2.Driver
     username: stat
@@ -23,6 +24,8 @@ spring:
   cloud:
     config:
       enabled: false
+      discovery:
+        enabled: false
 
 eureka:
   client:
