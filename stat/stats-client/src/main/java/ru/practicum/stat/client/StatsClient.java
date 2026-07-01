@@ -51,6 +51,11 @@ public class StatsClient {
     }
 
     private URI getServiceUri(String path) {
+        if (statsServerUrl != null && !statsServerUrl.isEmpty()) {
+            log.debug("Использование статического URL: {}", statsServerUrl);
+            return URI.create(statsServerUrl + path);
+        }
+
         if (discoveryClient != null) {
             try {
                 ServiceInstance instance = retryTemplate.execute(context -> {
@@ -61,19 +66,13 @@ public class StatsClient {
                     return instances.get(0);
                 });
                 String baseUrl = "http://" + instance.getHost() + ":" + instance.getPort();
+                log.debug("Использование DiscoveryClient: {}", baseUrl);
                 return URI.create(baseUrl + path);
             } catch (Exception e) {
                 log.error("Не удалось получить URI через DiscoveryClient: {}", e.getMessage());
-                if (statsServerUrl != null && !statsServerUrl.isEmpty()) {
-                    log.warn("Использование fallback URL: {}", statsServerUrl);
-                    return URI.create(statsServerUrl + path);
-                }
-                throw e;
+                throw new IllegalStateException("Не удалось получить URI для stats-server", e);
             }
         } else {
-            if (statsServerUrl != null && !statsServerUrl.isEmpty()) {
-                return URI.create(statsServerUrl + path);
-            }
             throw new IllegalStateException("StatsClient не может получить URI: нет DiscoveryClient и не задан stats.server.url");
         }
     }
