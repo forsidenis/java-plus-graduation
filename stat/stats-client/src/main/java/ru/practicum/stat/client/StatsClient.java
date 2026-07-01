@@ -55,7 +55,6 @@ public class StatsClient {
             log.debug("Использование статического URL: {}", statsServerUrl);
             return URI.create(statsServerUrl + path);
         }
-
         if (discoveryClient != null) {
             try {
                 ServiceInstance instance = retryTemplate.execute(context -> {

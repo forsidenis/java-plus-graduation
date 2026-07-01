@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: stats-server
+  cloud:
+    config:
+      enabled: false
+      discovery:
+        enabled: false
+
+eureka:
+  client:
+    enabled: false
