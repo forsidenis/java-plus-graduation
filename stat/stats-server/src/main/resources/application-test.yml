@@ -4,14 +4,14 @@ server:
 spring:
   jpa:
     hibernate:
-      ddl-auto: create-drop
-    database-platform: org.hibernate.dialect.H2Dialect
+      ddl-auto: none
     properties:
       hibernate:
         format_sql: false
+        dialect: org.hibernate.dialect.H2Dialect
   sql:
     init:
-      mode: never
+      mode: always
   datasource:
     driver-class-name: org.h2.Driver
     username: stat
