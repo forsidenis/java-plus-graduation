@@ -3,21 +3,19 @@ server:
 
 spring:
   application:
-    name: config-server
-  profiles:
-    active: native
+    name: main-service
+  config:
+    import: "configserver:"
   cloud:
     config:
       fail-fast: true
-      retry:
-        useRandomPolicy: true
       discovery:
         enabled: true
         serviceId: config-server
-      server:
-        native:
-          searchLocations:
-            - classpath:config/{application}/
+      retry:
+        useRandomPolicy: true
+        max-interval: 6000
+
 eureka:
   client:
     serviceUrl:

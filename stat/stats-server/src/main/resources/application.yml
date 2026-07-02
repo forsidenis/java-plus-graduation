@@ -3,21 +3,28 @@ server:
 
 spring:
   application:
-    name: config-server
-  profiles:
-    active: native
+    name: stats-server
+  config:
+    import: "configserver:"
   cloud:
     config:
       fail-fast: true
-      retry:
-        useRandomPolicy: true
       discovery:
         enabled: true
         serviceId: config-server
-      server:
-        native:
-          searchLocations:
-            - classpath:config/{application}/
+      retry:
+        useRandomPolicy: true
+        max-interval: 6000
+    h2:
+      console:
+        enabled: true
+        path: /h2-console
+    settings:
+      web-allow-others: true
+    sql:
+      init:
+        mode: always
+
 eureka:
   client:
     serviceUrl:
