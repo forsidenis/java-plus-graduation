@@ -11,12 +11,6 @@
 
     <artifactId>discovery-server</artifactId>
 
-    <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -34,7 +28,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>ru.practicum.DiscoveryApp</mainClass>
+                    <mainClass>ru.practicum.discovery.DiscoveryServer</mainClass>
                 </configuration>
                 <executions>
                     <execution>
@@ -46,5 +40,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
