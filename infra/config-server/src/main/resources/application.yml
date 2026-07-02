@@ -1,13 +1,13 @@
 spring:
   application:
     name: config-server
+  profiles:
+    active: native
   cloud:
     config:
       server:
-        git:
-          uri: file://${user.home}/config-repo
-          default-label: main
-          search-paths: '{application}'
+        native:
+          searchLocations: file:./config-repo
 
 server:
   port: 0
