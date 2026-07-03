@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.ClientHttpRequestFactories;
 import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.loadbalancer.LoadBalancerClient;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -21,21 +23,26 @@ import java.util.List;
 @Slf4j
 public class StatsClient {
     private final RestClient restClient;
+    private final LoadBalancerClient loadBalancerClient;
+    private final String serviceId;
 
-    public StatsClient(@Value("${client.url}") String serverUrl) {
+    public StatsClient(@Value("${stats.service.name:stats-server}") String serviceId,
+                       LoadBalancerClient loadBalancerClient) {
+        this.serviceId = serviceId;
+        this.loadBalancerClient = loadBalancerClient;
         ClientHttpRequestFactorySettings settings = ClientHttpRequestFactorySettings.DEFAULTS
                 .withConnectTimeout(Duration.ofSeconds(5))
                 .withReadTimeout(Duration.ofSeconds(10));
 
         this.restClient = RestClient.builder()
-                .baseUrl(serverUrl)
                 .requestFactory(ClientHttpRequestFactories.get(settings))
                 .build();
     }
 
     public EndpointHitDto hit(EndpointHitDto hit) {
+        String baseUrl = getServiceUrl();
         return restClient.post()
-                .uri("/hit")
+                .uri(baseUrl + "/hit")
                 .body(hit)
                 .retrieve()
                 .body(EndpointHitDto.class);
@@ -43,8 +50,8 @@ public class StatsClient {
 
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end,
                                        List<String> uris, Boolean unique) {
-
-        UriComponentsBuilder builder = UriComponentsBuilder.fromPath("/stats")
+        String baseUrl = getServiceUrl();
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + "/stats")
                 .queryParam("start", start.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                 .queryParam("end", end.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
                 .queryParam("unique", unique);
@@ -61,5 +68,13 @@ public class StatsClient {
                 .body(ViewStatsDto[].class);
 
         return response != null ? Arrays.asList(response) : Collections.emptyList();
+    }
+
+    private String getServiceUrl() {
+        ServiceInstance instance = loadBalancerClient.choose(serviceId);
+        if (instance == null) {
+            throw new IllegalStateException("Нет доступных экземпляров сервиса " + serviceId);
+        }
+        return instance.getUri().toString();
     }
 }
