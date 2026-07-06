@@ -1,0 +1,21 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: compilation-service
+  datasource:
+    url: jdbc:postgresql://compilation-db:5432/ewm-compilation
+    username: compilation
+    password: compilation
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}

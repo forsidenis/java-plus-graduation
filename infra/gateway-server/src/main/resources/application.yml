@@ -11,6 +11,32 @@ spring:
       discovery:
         enabled: true
         serviceId: config-server
+    gateway:
+      routes:
+        - id: event-service
+          uri: lb://event-service
+          predicates:
+            - Path=/admin/events/**, /events/**, /users/*/events/**
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/admin/users/**
+        - id: category-service
+          uri: lb://category-service
+          predicates:
+            - Path=/admin/categories/**, /categories/**
+        - id: compilation-service
+          uri: lb://compilation-service
+          predicates:
+            - Path=/admin/compilations/**, /compilations/**
+        - id: request-service
+          uri: lb://request-service
+          predicates:
+            - Path=/users/*/requests/**
+        - id: rating-service
+          uri: lb://rating-service
+          predicates:
+            - Path=/private/events/**, /public/events/**
 
 eureka:
   client:

@@ -10,34 +10,36 @@ spring:
         locator:
           enabled: true
       routes:
-        - id: admin_route
-          uri: lb://main-service
+        # События (event-service)
+        - id: event-service
+          uri: lb://event-service
           predicates:
-            - Path=/admin/**
-        - id: users_route
-          uri: lb://main-service
+            - Path=/admin/events/**, /events/**, /users/*/events/**
+        # Пользователи (user-service)
+        - id: user-service
+          uri: lb://user-service
           predicates:
-            - Path=/users/**
-        - id: events_route
-          uri: lb://main-service
+            - Path=/admin/users/**
+        # Категории (category-service)
+        - id: category-service
+          uri: lb://category-service
           predicates:
-            - Path=/events/**
-        - id: compilations_route
-          uri: lb://main-service
+            - Path=/admin/categories/**, /categories/**
+        # Подборки (compilation-service)
+        - id: compilation-service
+          uri: lb://compilation-service
           predicates:
-            - Path=/compilations/**
-        - id: categories_route
-          uri: lb://main-service
+            - Path=/admin/compilations/**, /compilations/**
+        # Заявки (request-service)
+        - id: request-service
+          uri: lb://request-service
           predicates:
-            - Path=/categories/**
-        - id: private_route
-          uri: lb://main-service
+            - Path=/users/*/requests/**
+        # Рейтинги (rating-service)
+        - id: rating-service
+          uri: lb://rating-service
           predicates:
-            - Path=/private/**
-        - id: public_route
-          uri: lb://main-service
-          predicates:
-            - Path=/public/**
+            - Path=/private/events/**, /public/events/**
 
 eureka:
   client:
