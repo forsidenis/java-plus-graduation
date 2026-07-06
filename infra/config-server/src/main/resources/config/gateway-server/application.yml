@@ -1,41 +1,27 @@
-server:
-  port: 8080
-
 spring:
-  application:
-    name: gateway-server
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
       routes:
-        # События (event-service)
         - id: event-service
           uri: lb://event-service
           predicates:
             - Path=/admin/events/**, /events/**, /users/*/events/**
-        # Пользователи (user-service)
         - id: user-service
           uri: lb://user-service
           predicates:
             - Path=/admin/users/**
-        # Категории (category-service)
         - id: category-service
           uri: lb://category-service
           predicates:
             - Path=/admin/categories/**, /categories/**
-        # Подборки (compilation-service)
         - id: compilation-service
           uri: lb://compilation-service
           predicates:
             - Path=/admin/compilations/**, /compilations/**
-        # Заявки (request-service)
         - id: request-service
           uri: lb://request-service
           predicates:
             - Path=/users/*/requests/**
-        # Рейтинги (rating-service)
         - id: rating-service
           uri: lb://rating-service
           predicates:
@@ -44,29 +30,9 @@ spring:
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
-    fetch-registry: true
-    register-with-eureka: true
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: gateway,health,info
-      base-path: /actuator
-  endpoint:
-    gateway:
-      enabled: true
-    health:
-      show-details: always
-  info:
-    env:
-      enabled: true
-
-logging:
-  level:
-    com.netflix.discovery: DEBUG
-    org.springframework.cloud.gateway: TRACE
-    org.springframework.cloud.gateway.handler: DEBUG
-    org.springframework.cloud.gateway.route: DEBUG
-    org.springframework.web.reactive: DEBUG
+      defaultZone: http://${eureka.instance.hostname:localhost}:${eureka.instance.port:8761}/eureka/
+  instance:
+    preferIpAddress: true
+    hostname: localhost
+    instance-id: ${spring.application.name}:${random.value}
+    leaseRenewalIntervalInSeconds: 10

@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: event-service
+    name: category-service
   config:
     import: "configserver:"
   cloud:
@@ -16,9 +16,9 @@ spring:
         useRandomPolicy: true
         max-interval: 6000
   datasource:
-    url: jdbc:postgresql://event-db:5432/ewm-event
-    username: event
-    password: event
+    url: jdbc:postgresql://category-db:5432/ewm-category
+    username: category
+    password: category
   jpa:
     hibernate:
       ddl-auto: update

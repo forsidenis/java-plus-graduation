@@ -18,6 +18,7 @@ spring:
         native:
           searchLocations:
             - classpath:config/{application}/
+
 eureka:
   client:
     serviceUrl:

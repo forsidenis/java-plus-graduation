@@ -4,6 +4,17 @@ server:
 spring:
   application:
     name: compilation-service
+  config:
+    import: "configserver:"
+  cloud:
+    config:
+      fail-fast: true
+      discovery:
+        enabled: true
+        serviceId: config-server
+      retry:
+        useRandomPolicy: true
+        max-interval: 6000
   datasource:
     url: jdbc:postgresql://compilation-db:5432/ewm-compilation
     username: compilation
