@@ -2,25 +2,36 @@ server:
   port: 0
 
 spring:
-  profiles:
-    active: h2
   application:
     name: stats-server
   cloud:
     config:
       enabled: false
-    h2:
-      console:
-        enabled: true
-        path: /h2-console
-    sql:
-      init:
-        mode: always
+  datasource:
+    url: jdbc:h2:mem:statsdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: false
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema.sql
 
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://${eureka.instance.hostname:localhost}:${eureka.instance.port:8761}/eureka/
   instance:
     preferIpAddress: true
     hostname: localhost
