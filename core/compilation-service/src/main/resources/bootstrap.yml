@@ -1,9 +1,0 @@
-spring:
-  cloud:
-    config:
-      discovery:
-        enabled: true
-        serviceId: config-server
-      fail-fast: true
-      retry:
-        useRandomPolicy: true
