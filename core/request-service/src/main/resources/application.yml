@@ -4,17 +4,6 @@ server:
 spring:
   application:
     name: request-service
-  config:
-    import: "configserver:"
-  cloud:
-    config:
-      fail-fast: true
-      discovery:
-        enabled: true
-        serviceId: config-server
-      retry:
-        useRandomPolicy: true
-        max-interval: 6000
   datasource:
     url: jdbc:postgresql://request-db:5432/ewm-request
     username: request
@@ -26,7 +15,7 @@ spring:
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://discovery-server:8761/eureka/
   instance:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${random.value}
