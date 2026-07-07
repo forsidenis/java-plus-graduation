@@ -3,23 +3,13 @@ spring:
     active: h2
   application:
     name: stats-server
-  config:
-    import: "configserver:"
   cloud:
     config:
-      fail-fast: true
-      discovery:
-        enabled: true
-        serviceId: config-server
-      retry:
-        useRandomPolicy: true
-        max-interval: 6000
+      enabled: false
     h2:
       console:
         enabled: true
         path: /h2-console
-    settings:
-      web-allow-others: true
     sql:
       init:
         mode: always
