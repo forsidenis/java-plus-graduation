@@ -3,26 +3,19 @@ server:
 
 spring:
   application:
-    name: stats-server
+    name: event-service
   datasource:
-    url: jdbc:h2:mem:stat
-    username: stat
-    password:
-    driver-class-name: org.h2.Driver
+    url: jdbc:postgresql://localhost:5433/event-service
+    username: event
+    password: event
+    driver-class-name: org.postgresql.Driver
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: false
-        dialect: org.hibernate.dialect.H2Dialect
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
-  sql:
-    init:
-      mode: always
 
 eureka:
   client:
@@ -30,6 +23,15 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
     fetch-registry: true
     register-with-eureka: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: gateway,health,info
+  endpoint:
+    gateway:
+      enabled: true
 
 logging:
   level:

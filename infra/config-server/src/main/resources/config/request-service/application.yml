@@ -3,11 +3,11 @@ server:
 
 spring:
   application:
-    name: stats-server
+    name: request-service
   datasource:
-    url: jdbc:postgresql://localhost:5432/ewm-stat
-    username: stat
-    password: stat
+    url: jdbc:postgresql://localhost:5460/request-service
+    username: request
+    password: request
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -35,7 +35,6 @@ management:
 
 logging:
   level:
-    ru.yandex.practicum: DEBUG
-
+    ru.practicum: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level --- [%thread] %logger{36} : %msg%n"

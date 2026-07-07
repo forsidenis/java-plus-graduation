@@ -15,13 +15,6 @@ spring:
       retry:
         useRandomPolicy: true
         max-interval: 6000
-  datasource:
-    url: jdbc:postgresql://user-db:5432/ewm-user
-    username: user
-    password: user
-  jpa:
-    hibernate:
-      ddl-auto: update
 
 eureka:
   client:
