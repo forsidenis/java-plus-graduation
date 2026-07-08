@@ -90,6 +90,11 @@ public class CompilationServiceImpl implements CompilationService {
         if (eventIds == null || eventIds.isEmpty()) {
             return List.of();
         }
-        return eventClient.getEventsByIds(eventIds);
+        try {
+            return eventClient.getEventsByIds(eventIds);
+        } catch (Exception e) {
+            log.warn("Failed to get events by ids: {}", e.getMessage());
+            return List.of();
+        }
     }
 }

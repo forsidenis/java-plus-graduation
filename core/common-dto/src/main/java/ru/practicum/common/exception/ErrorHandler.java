@@ -1,6 +1,7 @@
 package ru.practicum.common.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -56,11 +57,15 @@ public class ErrorHandler {
         return buildApiError(HttpStatus.NOT_FOUND, "The required object was not found.", e.getMessage(), e);
     }
 
-    @ExceptionHandler({AlreadyExistsException.class, ConflictException.class})
+    @ExceptionHandler({AlreadyExistsException.class, ConflictException.class, DataIntegrityViolationException.class})
     @ResponseStatus(HttpStatus.CONFLICT)
     public ApiError handleConflictException(final RuntimeException e) {
         log.info("409 {}", e.getMessage(), e);
-        return buildApiError(HttpStatus.CONFLICT, "Integrity constraint has been violated.", e.getMessage(), e);
+        String message = e.getMessage();
+        if (e instanceof DataIntegrityViolationException) {
+            message = "Integrity constraint has been violated.";
+        }
+        return buildApiError(HttpStatus.CONFLICT, "Integrity constraint has been violated.", message, e);
     }
 
     @ExceptionHandler(Exception.class)

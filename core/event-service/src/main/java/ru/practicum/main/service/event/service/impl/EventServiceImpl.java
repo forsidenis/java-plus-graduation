@@ -17,7 +17,6 @@ import ru.practicum.main.service.event.client.RequestClient;
 import ru.practicum.main.service.event.client.UserClient;
 import ru.practicum.main.service.event.mapper.EventMapper;
 import ru.practicum.main.service.event.model.Event;
-import ru.practicum.common.dto.EventState;
 import ru.practicum.main.service.event.repository.EventRepository;
 import ru.practicum.main.service.event.service.EventService;
 import ru.practicum.stat.client.StatsClient;
@@ -85,7 +84,7 @@ public class EventServiceImpl implements EventService {
             throw new NotFoundException("User not found");
         }
         CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        Long confirmed = requestClient.countConfirmedRequests(eventId);
+        Long confirmed = getConfirmedRequestsSafely(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
         return EventMapper.toFullDto(event, category, user, confirmed, views);
     }
@@ -120,7 +119,7 @@ public class EventServiceImpl implements EventService {
         event = eventRepository.save(event);
         UserShortDto user = userClient.getUser(userId);
         CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        Long confirmed = requestClient.countConfirmedRequests(eventId);
+        Long confirmed = getConfirmedRequestsSafely(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
         return EventMapper.toFullDto(event, category, user, confirmed, views);
     }
@@ -131,9 +130,11 @@ public class EventServiceImpl implements EventService {
                                                Boolean onlyAvailable, String sort, int from, int size,
                                                HttpServletRequest request) {
         log.info("getPublicEvents");
-        if (rangeStart == null) rangeStart = LocalDateTime.now();
-        if (rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
-            throw new IllegalArgumentException("Range start after end");
+        if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
+            throw new IllegalArgumentException("rangeStart must be before rangeEnd");
+        }
+        if (rangeStart == null) {
+            rangeStart = LocalDateTime.now();
         }
         Sort sortBy = (sort != null && sort.equals("VIEWS")) ? Sort.by(Sort.Direction.DESC, "id") : Sort.by(Sort.Direction.ASC, "eventDate");
         Pageable pageable = PageRequest.of(from / size, size, sortBy);
@@ -142,7 +143,7 @@ public class EventServiceImpl implements EventService {
             events = events.stream()
                     .filter(e -> {
                         if (e.getParticipantLimit() == 0) return true;
-                        long confirmed = requestClient.countConfirmedRequests(e.getId());
+                        long confirmed = getConfirmedRequestsSafely(e.getId());
                         return confirmed < e.getParticipantLimit();
                     })
                     .collect(Collectors.toList());
@@ -160,13 +161,15 @@ public class EventServiceImpl implements EventService {
         log.info("getPublicEventById: eventId={}", eventId);
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Event not found"));
+
         if (event.getState() != EventState.PUBLISHED) {
-            throw new NotFoundException("Event not published");
+            throw new NotFoundException("Event is not published");
         }
+
         saveHit(request);
         UserShortDto user = userClient.getUser(event.getInitiatorId());
         CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        Long confirmed = requestClient.countConfirmedRequests(eventId);
+        Long confirmed = getConfirmedRequestsSafely(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
         return EventMapper.toFullDto(event, category, user, confirmed, views);
     }
@@ -215,7 +218,7 @@ public class EventServiceImpl implements EventService {
         event = eventRepository.save(event);
         UserShortDto user = userClient.getUser(event.getInitiatorId());
         CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        Long confirmed = requestClient.countConfirmedRequests(eventId);
+        Long confirmed = getConfirmedRequestsSafely(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
         return EventMapper.toFullDto(event, category, user, confirmed, views);
     }
@@ -233,7 +236,7 @@ public class EventServiceImpl implements EventService {
     public List<EventShortDto> getEventsByIdsInternal(List<Long> ids) {
         List<Event> events = eventRepository.findAllById(ids);
         return events.stream()
-                .map(e -> EventMapper.toShortDto(e))
+                .map(EventMapper::toShortDto)
                 .collect(Collectors.toList());
     }
 
@@ -244,7 +247,8 @@ public class EventServiceImpl implements EventService {
                 .orElse(false);
     }
 
-    // вспомогательные
+    // ===== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ =====
+
     private Event findEventByIdAndInitiator(Long eventId, Long userId) {
         return eventRepository.findById(eventId)
                 .filter(e -> e.getInitiatorId().equals(userId))
@@ -253,51 +257,92 @@ public class EventServiceImpl implements EventService {
 
     private Long getViewsForEvent(Long eventId, LocalDateTime start) {
         if (start == null) start = LocalDateTime.now().minusYears(10);
-        List<ViewStatsDto> stats = statsClient.getStats(start, LocalDateTime.now(), List.of("/events/" + eventId), true);
-        return stats.isEmpty() ? 0L : stats.get(0).getHits();
+        try {
+            List<ViewStatsDto> stats = statsClient.getStats(start, LocalDateTime.now(), List.of("/events/" + eventId), true);
+            return stats.isEmpty() ? 0L : stats.get(0).getHits();
+        } catch (Exception e) {
+            log.warn("Failed to get views for event {}: {}", eventId, e.getMessage());
+            return 0L;
+        }
+    }
+
+    private Long getConfirmedRequestsSafely(Long eventId) {
+        try {
+            return requestClient.countConfirmedRequests(eventId);
+        } catch (Exception e) {
+            log.warn("Failed to get confirmed requests for event {}: {}", eventId, e.getMessage());
+            return 0L;
+        }
     }
 
     private void saveHit(HttpServletRequest request) {
-        statsClient.hit(EndpointHitDto.builder()
-                .app("ewm-main-service")
-                .uri(request.getRequestURI())
-                .ip(request.getRemoteAddr())
-                .timestamp(LocalDateTime.now())
-                .build());
+        try {
+            statsClient.hit(EndpointHitDto.builder()
+                    .app("ewm-main-service")
+                    .uri(request.getRequestURI())
+                    .ip(request.getRemoteAddr())
+                    .timestamp(LocalDateTime.now())
+                    .build());
+        } catch (Exception e) {
+            log.warn("Failed to save hit: {}", e.getMessage());
+        }
+    }
+
+    // ===== ВЫНЕСЕННЫЙ МЕТОД ДЛЯ ПОЛУЧЕНИЯ VIEWS =====
+    private Map<Long, Long> getViewsMap(List<Event> events, LocalDateTime earliest) {
+        try {
+            List<String> uris = events.stream()
+                    .map(e -> "/events/" + e.getId())
+                    .collect(Collectors.toList());
+            List<ViewStatsDto> stats = statsClient.getStats(earliest, LocalDateTime.now(), uris, false);
+            return stats.stream()
+                    .collect(Collectors.toMap(
+                            v -> Long.parseLong(v.getUri().substring(v.getUri().lastIndexOf('/') + 1)),
+                            ViewStatsDto::getHits,
+                            (a, b) -> a
+                    ));
+        } catch (Exception e) {
+            log.warn("Failed to get views for events: {}", e.getMessage());
+            return Map.of();
+        }
     }
 
     private List<EventShortDto> enrichEventsWithStats(List<Event> events, boolean onlyPublished) {
         if (events.isEmpty()) return List.of();
-        // Получаем категории и пользователей для каждого события
+
         Map<Long, CategoryDto> categoryMap = events.stream()
                 .map(Event::getCategoryId)
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
-                    CategoryDto cat = categoryClient.getCategory(id);
-                    return cat != null ? cat : CategoryDto.builder().id(id).build();
+                    try {
+                        CategoryDto cat = categoryClient.getCategory(id);
+                        return cat != null ? cat : CategoryDto.builder().id(id).build();
+                    } catch (Exception e) {
+                        return CategoryDto.builder().id(id).build();
+                    }
                 }));
+
         Map<Long, UserShortDto> userMap = events.stream()
                 .map(Event::getInitiatorId)
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
-                    UserShortDto user = userClient.getUser(id);
-                    return user != null ? user : UserShortDto.builder().id(id).build();
+                    try {
+                        UserShortDto user = userClient.getUser(id);
+                        return user != null ? user : UserShortDto.builder().id(id).build();
+                    } catch (Exception e) {
+                        return UserShortDto.builder().id(id).build();
+                    }
                 }));
 
         Map<Long, Long> confirmedMap = events.stream()
-                .collect(Collectors.toMap(Event::getId,
-                        e -> requestClient.countConfirmedRequests(e.getId())));
+                .collect(Collectors.toMap(Event::getId, e -> getConfirmedRequestsSafely(e.getId())));
 
         LocalDateTime earliest = events.stream()
                 .map(e -> e.getPublishedOn() != null ? e.getPublishedOn() : e.getCreatedOn())
-                .min(LocalDateTime::compareTo).orElse(LocalDateTime.now().minusYears(10));
-        List<String> uris = events.stream().map(e -> "/events/" + e.getId()).collect(Collectors.toList());
-        List<ViewStatsDto> stats = statsClient.getStats(earliest, LocalDateTime.now(), uris, false);
-        Map<Long, Long> viewsMap = stats.stream()
-                .collect(Collectors.toMap(
-                        v -> Long.parseLong(v.getUri().substring(v.getUri().lastIndexOf('/') + 1)),
-                        ViewStatsDto::getHits,
-                        (a, b) -> a));
+                .min(LocalDateTime::compareTo)
+                .orElse(LocalDateTime.now().minusYears(10));
+
+        final Map<Long, Long> viewsMap = getViewsMap(events, earliest);
 
         return events.stream()
                 .map(e -> EventMapper.toShortDto(e,
@@ -310,35 +355,40 @@ public class EventServiceImpl implements EventService {
 
     private List<EventFullDto> enrichEventsFullWithStats(List<Event> events) {
         if (events.isEmpty()) return List.of();
+
         Map<Long, CategoryDto> categoryMap = events.stream()
                 .map(Event::getCategoryId)
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
-                    CategoryDto cat = categoryClient.getCategory(id);
-                    return cat != null ? cat : CategoryDto.builder().id(id).build();
+                    try {
+                        CategoryDto cat = categoryClient.getCategory(id);
+                        return cat != null ? cat : CategoryDto.builder().id(id).build();
+                    } catch (Exception e) {
+                        return CategoryDto.builder().id(id).build();
+                    }
                 }));
+
         Map<Long, UserShortDto> userMap = events.stream()
                 .map(Event::getInitiatorId)
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
-                    UserShortDto user = userClient.getUser(id);
-                    return user != null ? user : UserShortDto.builder().id(id).build();
+                    try {
+                        UserShortDto user = userClient.getUser(id);
+                        return user != null ? user : UserShortDto.builder().id(id).build();
+                    } catch (Exception e) {
+                        return UserShortDto.builder().id(id).build();
+                    }
                 }));
 
         Map<Long, Long> confirmedMap = events.stream()
-                .collect(Collectors.toMap(Event::getId,
-                        e -> requestClient.countConfirmedRequests(e.getId())));
+                .collect(Collectors.toMap(Event::getId, e -> getConfirmedRequestsSafely(e.getId())));
 
         LocalDateTime earliest = events.stream()
                 .map(e -> e.getPublishedOn() != null ? e.getPublishedOn() : e.getCreatedOn())
-                .min(LocalDateTime::compareTo).orElse(LocalDateTime.now().minusYears(10));
-        List<String> uris = events.stream().map(e -> "/events/" + e.getId()).collect(Collectors.toList());
-        List<ViewStatsDto> stats = statsClient.getStats(earliest, LocalDateTime.now(), uris, false);
-        Map<Long, Long> viewsMap = stats.stream()
-                .collect(Collectors.toMap(
-                        v -> Long.parseLong(v.getUri().substring(v.getUri().lastIndexOf('/') + 1)),
-                        ViewStatsDto::getHits,
-                        (a, b) -> a));
+                .min(LocalDateTime::compareTo)
+                .orElse(LocalDateTime.now().minusYears(10));
+
+        final Map<Long, Long> viewsMap = getViewsMap(events, earliest);
 
         return events.stream()
                 .map(e -> EventMapper.toFullDto(e,
