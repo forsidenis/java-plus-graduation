@@ -21,7 +21,7 @@ public interface RequestClient {
     @GetMapping("/internal/requests/event/{eventId}")
     List<ParticipationRequestDto> getRequestsByEvent(@PathVariable("eventId") Long eventId);
 
-    @PatchMapping("/internal/requests/event/{eventId}/status")
+    @RequestMapping(method = RequestMethod.PATCH, value = "/internal/requests/event/{eventId}/status")
     EventRequestStatusUpdateResult updateRequestsStatus(@PathVariable("eventId") Long eventId,
                                                         @RequestBody EventRequestStatusUpdateRequest request);
 }
