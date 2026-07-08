@@ -44,10 +44,10 @@ public class ErrorHandler {
     }
 
     @ExceptionHandler(ConditionsNotMetException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ApiError handleOperationConditionsNotMetException(final ConditionsNotMetException e) {
-        log.info("400 {}", e.getMessage(), e);
-        return buildApiError(HttpStatus.BAD_REQUEST, "For the requested operation the conditions are not met.", e.getMessage(), e);
+    @ResponseStatus(HttpStatus.CONFLICT)  // вместо BAD_REQUEST
+    public ApiError handleConditionsNotMetException(final ConditionsNotMetException e) {
+        log.info("409 {}", e.getMessage(), e);
+        return buildApiError(HttpStatus.CONFLICT, "For the requested operation the conditions are not met.", e.getMessage(), e);
     }
 
     @ExceptionHandler(NotFoundException.class)
