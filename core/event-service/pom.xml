@@ -73,6 +73,11 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-httpclient</artifactId>
+        </dependency>
+
         <!-- DB -->
         <dependency>
             <groupId>org.postgresql</groupId>

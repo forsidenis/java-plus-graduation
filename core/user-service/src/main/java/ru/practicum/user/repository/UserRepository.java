@@ -14,6 +14,6 @@ public interface UserRepository extends JpaRepository<User, Integer> {
     @Query("SELECT u FROM User u WHERE u.id IN :ids ORDER BY u.id")
     List<User> getUsers(@Param("ids") List<Long> ids);
 
-    @Query("SELECT u FROM User u ORDER BY u.id")
+    @Query(value = "SELECT u FROM User u ORDER BY u.id LIMIT :size OFFSET :from")
     List<User> getUsers(@Param("from") Long from, @Param("size") Long size);
 }

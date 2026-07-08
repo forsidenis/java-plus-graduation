@@ -17,6 +17,10 @@ spring:
       hibernate:
         format_sql: false
 
+feign:
+  httpclient:
+    enabled: true
+
 eureka:
   client:
     serviceUrl:
