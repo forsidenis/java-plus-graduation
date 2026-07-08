@@ -5,10 +5,11 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.common.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.common.dto.EventRequestStatusUpdateResult;
 import ru.practicum.common.dto.ParticipationRequestDto;
+import ru.practicum.main.service.event.config.FeignConfig;
 
 import java.util.List;
 
-@FeignClient(name = "request-service")
+@FeignClient(name = "request-service", configuration = FeignConfig.class)
 public interface RequestClient {
 
     @GetMapping("/internal/requests/count/{eventId}")
@@ -21,7 +22,7 @@ public interface RequestClient {
     @GetMapping("/internal/requests/event/{eventId}")
     List<ParticipationRequestDto> getRequestsByEvent(@PathVariable("eventId") Long eventId);
 
-    @RequestMapping(method = RequestMethod.PATCH, value = "/internal/requests/event/{eventId}/status")
+    @PatchMapping("/internal/requests/event/{eventId}/status")
     EventRequestStatusUpdateResult updateRequestsStatus(@PathVariable("eventId") Long eventId,
                                                         @RequestBody EventRequestStatusUpdateRequest request);
 }
