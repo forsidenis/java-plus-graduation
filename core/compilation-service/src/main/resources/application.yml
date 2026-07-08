@@ -15,13 +15,6 @@ spring:
       retry:
         useRandomPolicy: true
         max-interval: 6000
-  datasource:
-    url: jdbc:postgresql://compilation-db:5432/ewm-compilation
-    username: compilation
-    password: compilation
-  jpa:
-    hibernate:
-      ddl-auto: update
 
 eureka:
   client:
