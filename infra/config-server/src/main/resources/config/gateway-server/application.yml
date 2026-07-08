@@ -10,7 +10,13 @@ spring:
         locator:
           enabled: true
       routes:
-        # ===== МАРШРУТЫ ДЛЯ EVENT-SERVICE =====
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/admin/users/**
+          filters:
+            - StripPrefix=0
+
         - id: event-service-admin
           uri: lb://event-service
           predicates:
@@ -32,7 +38,13 @@ spring:
           filters:
             - StripPrefix=0
 
-        # ===== МАРШРУТЫ ДЛЯ CATEGORY-SERVICE =====
+        - id: request-service
+          uri: lb://request-service
+          predicates:
+            - Path=/users/{userId}/requests/**
+          filters:
+            - StripPrefix=0
+
         - id: category-service-admin
           uri: lb://category-service
           predicates:
@@ -47,7 +59,6 @@ spring:
           filters:
             - StripPrefix=0
 
-        # ===== МАРШРУТЫ ДЛЯ COMPILATION-SERVICE =====
         - id: compilation-service-admin
           uri: lb://compilation-service
           predicates:
@@ -62,15 +73,6 @@ spring:
           filters:
             - StripPrefix=0
 
-        # ===== МАРШРУТЫ ДЛЯ REQUEST-SERVICE =====
-        - id: request-service-private
-          uri: lb://request-service
-          predicates:
-            - Path=/users/{userId}/requests/**
-          filters:
-            - StripPrefix=0
-
-        # ===== МАРШРУТЫ ДЛЯ RATING-SERVICE =====
         - id: rating-service-private
           uri: lb://rating-service
           predicates:
