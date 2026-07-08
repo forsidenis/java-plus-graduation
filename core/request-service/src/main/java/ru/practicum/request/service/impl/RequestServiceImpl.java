@@ -46,38 +46,64 @@ public class RequestServiceImpl implements RequestService {
     @Transactional
     public ParticipationRequestDto createRequest(Integer userId, Integer eventId) {
         log.info("createRequest: userId={}, eventId={}", userId, eventId);
+
+        // Проверяем пользователя
         UserShortDto user = userClient.getUser(Long.valueOf(userId));
         if (user == null) {
             throw new NotFoundException("User not found id=" + userId);
         }
+
+        // Получаем событие
         EventFullDto event = eventClient.getEvent(Long.valueOf(eventId));
         if (event == null) {
             throw new NotFoundException("Event not found id=" + eventId);
         }
+
+        // Если инициатор не загружен – загружаем через UserClient
+        if (event.getInitiator() == null) {
+            UserShortDto initiator = userClient.getUser(event.getInitiator().getId());
+            if (initiator == null) {
+                throw new NotFoundException("Initiator not found for event id=" + eventId);
+            }
+            event.setInitiator(initiator);
+        }
+
+        // Проверяем, что пользователь не является инициатором
         if (event.getInitiator().getId().equals(Long.valueOf(userId))) {
             throw new ConflictException("Initiator cannot request own event");
         }
+
+        // Проверяем, что событие опубликовано
         if (event.getState() != EventState.PUBLISHED) {
             throw new ConflictException("Event not published");
         }
+
+        // Проверяем, нет ли уже заявки от этого пользователя
         requestRepository.findByEventIdAndRequesterId(eventId, userId)
                 .ifPresent(r -> {
                     throw new ConflictException("Duplicate request");
                 });
+
+        // Проверяем лимит участников
         if (event.getParticipantLimit() > 0) {
             long confirmed = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
             if (confirmed >= event.getParticipantLimit()) {
                 throw new ConflictException("Participant limit reached");
             }
         }
+
+        // Создаём заявку
         ParticipationRequest request = new ParticipationRequest();
         request.setCreated(LocalDateTime.now());
         request.setEventId(Long.valueOf(eventId));
         request.setRequesterId(Long.valueOf(userId));
         request.setStatus(RequestStatus.PENDING);
+
+        // Если модерация отключена или лимит 0 – сразу подтверждаем
         if (!event.getRequestModeration() || event.getParticipantLimit() == 0) {
             request.setStatus(RequestStatus.CONFIRMED);
         }
+
         request = requestRepository.save(request);
         log.info("Request created id={}", request.getId());
         return RequestMapper.toDto(request);
@@ -101,9 +127,21 @@ public class RequestServiceImpl implements RequestService {
         if (event == null) {
             throw new NotFoundException("Event not found id=" + eventId);
         }
+
+        // Если инициатор не загружен – загружаем через UserClient
+        if (event.getInitiator() == null) {
+            UserShortDto initiator = userClient.getUser(event.getInitiator().getId());
+            if (initiator == null) {
+                throw new NotFoundException("Initiator not found for event id=" + eventId);
+            }
+            event.setInitiator(initiator);
+        }
+
+        // Проверяем, что пользователь является инициатором
         if (!event.getInitiator().getId().equals(userId)) {
             throw new ConditionsNotMetException("User is not initiator");
         }
+
         return requestRepository.findAllByEventId(eventId.intValue()).stream()
                 .map(RequestMapper::toDto)
                 .collect(Collectors.toList());
@@ -118,6 +156,16 @@ public class RequestServiceImpl implements RequestService {
         if (event == null) {
             throw new NotFoundException("Event not found id=" + eventId);
         }
+
+        // Если инициатор не загружен – загружаем через UserClient
+        if (event.getInitiator() == null) {
+            UserShortDto initiator = userClient.getUser(event.getInitiator().getId());
+            if (initiator == null) {
+                throw new NotFoundException("Initiator not found for event id=" + eventId);
+            }
+            event.setInitiator(initiator);
+        }
+
         if (!event.getInitiator().getId().equals(userId)) {
             throw new ConditionsNotMetException("User is not initiator");
         }
@@ -149,7 +197,6 @@ public class RequestServiceImpl implements RequestService {
     public EventRequestStatusUpdateResult updateRequestsStatusInternal(Long eventId,
                                                                        EventRequestStatusUpdateRequest request) {
         // Для внутреннего вызова без проверки прав (они проверены в вызывающем сервисе)
-        // Получаем событие (нужно только для лимита)
         EventFullDto event = eventClient.getEvent(eventId);
         if (event == null) {
             throw new NotFoundException("Event not found");
@@ -172,6 +219,7 @@ public class RequestServiceImpl implements RequestService {
         RequestStatus newStatus = updateRequest.getStatus();
         List<ParticipationRequest> confirmed = new ArrayList<>();
         List<ParticipationRequest> rejected = new ArrayList<>();
+
         if (newStatus == RequestStatus.CONFIRMED) {
             long confirmedCount = requestRepository.countByEventIdAndStatus(eventId.intValue(), RequestStatus.CONFIRMED);
             long limit = event.getParticipantLimit();

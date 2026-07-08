@@ -220,13 +220,13 @@ public class EventServiceImpl implements EventService {
         return EventMapper.toFullDto(event, category, user, confirmed, views);
     }
 
-    // Internal methods
     @Override
     public EventFullDto getEventInternal(Long eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Event not found"));
-        // Для внутреннего использования возвращаем без заполнения связанных DTO (можно null)
-        return EventMapper.toFullDto(event, null, null, 0L, 0L);
+        CategoryDto category = categoryClient.getCategory(event.getCategoryId());
+        UserShortDto user = userClient.getUser(event.getInitiatorId());
+        return EventMapper.toFullDto(event, category, user, 0L, 0L);
     }
 
     @Override

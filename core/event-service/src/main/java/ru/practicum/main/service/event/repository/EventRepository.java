@@ -9,6 +9,7 @@ import ru.practicum.common.dto.EventState;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
 
@@ -40,4 +41,6 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                  Pageable pageable);
 
     List<Event> findAllByInitiatorId(Long userId, Pageable pageable);
+
+    Optional<Event> findByIdAndState(Long id, EventState state);
 }
