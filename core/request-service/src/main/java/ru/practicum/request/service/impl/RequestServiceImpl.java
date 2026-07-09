@@ -57,43 +57,53 @@ public class RequestServiceImpl implements RequestService {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
 
-        if (event.getInitiator() == null || event.getInitiator().getId() == null) {
-            throw new NotFoundException("Инициатор события не найден");
+        // Если инициатор не загружен – загружаем через UserClient
+        if (event.getInitiator() == null) {
+            UserShortDto initiator = userClient.getUser(event.getInitiator().getId());
+            if (initiator == null) {
+                throw new NotFoundException("Инициатор события с id=" + eventId + " не найден");
+            }
+            event.setInitiator(initiator);
         }
 
+        // Проверяем, что пользователь не является инициатором
         if (event.getInitiator().getId().equals(Long.valueOf(userId))) {
-            throw new ConflictException("Инициатор не может подать заявку на своё событие");
+            throw new ConflictException("Инициатор не может создать запрос на участие в своём событии");
         }
 
+        // Проверяем, что событие опубликовано
         if (event.getState() != EventState.PUBLISHED) {
             throw new ConflictException("Событие не опубликовано");
         }
 
+        // Проверяем, нет ли уже заявки от этого пользователя
         requestRepository.findByEventIdAndRequesterId(eventId, userId)
                 .ifPresent(r -> {
-                    throw new ConflictException("Повторная заявка не допускается");
+                    throw new ConflictException("Повторный запрос на участие в событии");
                 });
 
-        if (event.getParticipantLimit() != null && event.getParticipantLimit() > 0) {
+        // Проверяем лимит участников
+        if (event.getParticipantLimit() > 0) {
             long confirmed = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
             if (confirmed >= event.getParticipantLimit()) {
-                throw new ConflictException("Достигнут лимит участников");
+                throw new ConflictException("Достигнут лимит участников события");
             }
         }
 
+        // Создаём заявку
         ParticipationRequest request = new ParticipationRequest();
         request.setCreated(LocalDateTime.now());
         request.setEventId(Long.valueOf(eventId));
         request.setRequesterId(Long.valueOf(userId));
         request.setStatus(RequestStatus.PENDING);
 
-        if (event.getRequestModeration() == null || !event.getRequestModeration() ||
-                (event.getParticipantLimit() != null && event.getParticipantLimit() == 0)) {
+        // Если модерация отключена или лимит 0 – сразу подтверждаем
+        if (!event.getRequestModeration() || event.getParticipantLimit() == 0) {
             request.setStatus(RequestStatus.CONFIRMED);
         }
 
         request = requestRepository.save(request);
-        log.info("Заявка создана id={}", request.getId());
+        log.info("Запрос создан id={}", request.getId());
         return RequestMapper.toDto(request);
     }
 
@@ -102,7 +112,13 @@ public class RequestServiceImpl implements RequestService {
     public ParticipationRequestDto cancelRequest(Integer userId, Integer requestId) {
         log.info("cancelRequest: userId={}, requestId={}", userId, requestId);
         ParticipationRequest request = requestRepository.findByIdAndRequesterId(requestId, userId)
-                .orElseThrow(() -> new NotFoundException("Заявка не найдена или не принадлежит пользователю"));
+                .orElseThrow(() -> new NotFoundException("Запрос не найден или не принадлежит пользователю"));
+
+        // Запрещаем отмену уже подтверждённой заявки
+        if (request.getStatus() == RequestStatus.CONFIRMED) {
+            throw new ConflictException("Нельзя отменить уже подтверждённую заявку");
+        }
+
         request.setStatus(RequestStatus.CANCELED);
         request = requestRepository.save(request);
         return RequestMapper.toDto(request);
@@ -116,12 +132,16 @@ public class RequestServiceImpl implements RequestService {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
 
-        if (event.getInitiator() == null || event.getInitiator().getId() == null) {
-            throw new NotFoundException("Инициатор события не найден");
+        if (event.getInitiator() == null) {
+            UserShortDto initiator = userClient.getUser(event.getInitiator().getId());
+            if (initiator == null) {
+                throw new NotFoundException("Инициатор события с id=" + eventId + " не найден");
+            }
+            event.setInitiator(initiator);
         }
 
         if (!event.getInitiator().getId().equals(userId)) {
-            throw new ConditionsNotMetException("Пользователь не является инициатором");
+            throw new ConditionsNotMetException("Пользователь не является инициатором события");
         }
 
         return requestRepository.findAllByEventId(eventId.intValue()).stream()
@@ -139,17 +159,21 @@ public class RequestServiceImpl implements RequestService {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
 
-        if (event.getInitiator() == null || event.getInitiator().getId() == null) {
-            throw new NotFoundException("Инициатор события не найден");
+        if (event.getInitiator() == null) {
+            UserShortDto initiator = userClient.getUser(event.getInitiator().getId());
+            if (initiator == null) {
+                throw new NotFoundException("Инициатор события с id=" + eventId + " не найден");
+            }
+            event.setInitiator(initiator);
         }
 
         if (!event.getInitiator().getId().equals(userId)) {
-            throw new ConditionsNotMetException("Пользователь не является инициатором");
+            throw new ConditionsNotMetException("Пользователь не является инициатором события");
         }
         return updateRequestsInternal(eventId, updateRequest, event);
     }
 
-    // Внутренние методы
+    // === Внутренние методы ===
 
     @Override
     public Long countConfirmedRequests(Long eventId) {
@@ -175,11 +199,12 @@ public class RequestServiceImpl implements RequestService {
                                                                        EventRequestStatusUpdateRequest request) {
         EventFullDto event = eventClient.getEvent(eventId);
         if (event == null) {
-            throw new NotFoundException("Событие не найдено");
+            throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
         return updateRequestsInternal(eventId, request, event);
     }
 
+    // Общая логика обновления статусов
     private EventRequestStatusUpdateResult updateRequestsInternal(Long eventId,
                                                                   EventRequestStatusUpdateRequest updateRequest,
                                                                   EventFullDto event) {
@@ -188,7 +213,7 @@ public class RequestServiceImpl implements RequestService {
         List<ParticipationRequest> requests = requestRepository.findAllByIdIn(requestIds);
         for (ParticipationRequest req : requests) {
             if (!req.getEventId().equals(eventId)) {
-                throw new ConditionsNotMetException("Заявка не принадлежит событию");
+                throw new ConditionsNotMetException("Запрос не принадлежит этому событию");
             }
         }
         RequestStatus newStatus = updateRequest.getStatus();
@@ -197,10 +222,10 @@ public class RequestServiceImpl implements RequestService {
 
         if (newStatus == RequestStatus.CONFIRMED) {
             long confirmedCount = requestRepository.countByEventIdAndStatus(eventId.intValue(), RequestStatus.CONFIRMED);
-            long limit = event.getParticipantLimit() != null ? event.getParticipantLimit() : 0;
+            long limit = event.getParticipantLimit();
             for (ParticipationRequest req : requests) {
                 if (req.getStatus() != RequestStatus.PENDING) {
-                    throw new ConditionsNotMetException("Заявка не в статусе PENDING");
+                    throw new ConditionsNotMetException("Запрос не в статусе PENDING");
                 }
                 if (limit == 0 || confirmedCount < limit) {
                     req.setStatus(RequestStatus.CONFIRMED);
