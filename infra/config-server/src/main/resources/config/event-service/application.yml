@@ -5,9 +5,9 @@ spring:
   application:
     name: event-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/event-service
-    username: event
-    password: event
+    url: jdbc:postgresql://localhost:5433/ewm-main
+    username: main
+    password: main
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect

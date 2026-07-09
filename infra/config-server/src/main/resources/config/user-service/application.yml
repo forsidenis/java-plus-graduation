@@ -5,9 +5,9 @@ spring:
   application:
     name: user-service
   datasource:
-    url: jdbc:postgresql://localhost:5440/user-service
-    username: user
-    password: user
+    url: jdbc:postgresql://localhost:5433/ewm-main
+    username: main
+    password: main
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
