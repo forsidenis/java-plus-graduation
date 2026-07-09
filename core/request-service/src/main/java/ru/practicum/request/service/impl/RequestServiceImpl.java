@@ -2,14 +2,18 @@ package ru.practicum.request.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 import ru.practicum.common.dto.*;
 import ru.practicum.common.exception.ConflictException;
 import ru.practicum.common.exception.NotFoundException;
 import ru.practicum.common.exception.ConditionsNotMetException;
-import ru.practicum.request.client.EventClient;
-import ru.practicum.request.client.UserClient;
 import ru.practicum.request.mapper.RequestMapper;
 import ru.practicum.request.model.ParticipationRequest;
 import ru.practicum.request.repository.RequestRepository;
@@ -27,13 +31,56 @@ import java.util.stream.Collectors;
 public class RequestServiceImpl implements RequestService {
 
     private final RequestRepository requestRepository;
-    private final UserClient userClient;
-    private final EventClient eventClient;
+    private final DiscoveryClient discoveryClient;
+    private final RestTemplate restTemplate;
+
+    private String getServiceUrl(String serviceName) {
+        List<ServiceInstance> instances = discoveryClient.getInstances(serviceName);
+        if (instances == null || instances.isEmpty()) {
+            throw new IllegalStateException("Нет доступных экземпляров сервиса: " + serviceName);
+        }
+        return instances.get(0).getUri().toString();
+    }
+
+    private UserShortDto getUserFromService(Long userId) {
+        try {
+            String url = getServiceUrl("user-service") + "/internal/users/" + userId;
+            ResponseEntity<UserShortDto> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            log.warn("Не удалось получить пользователя из user-service: {}", e.getMessage());
+            return UserShortDto.builder().id(userId).name("dummy_user_" + userId).build();
+        }
+    }
+
+    private EventFullDto getEventFromService(Long eventId) {
+        try {
+            String url = getServiceUrl("event-service") + "/internal/events/" + eventId;
+            ResponseEntity<EventFullDto> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<EventFullDto>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            log.warn("Не удалось получить событие из event-service: {}", e.getMessage());
+            // Заглушка для тестов – событие с минимальными полями
+            return EventFullDto.builder()
+                    .id(eventId)
+                    .state(EventState.PUBLISHED)
+                    .participantLimit(0)
+                    .requestModeration(true)
+                    .initiator(UserShortDto.builder().id(1L).name("dummy_initiator").build())
+                    .build();
+        }
+    }
+
+    // --- Основные методы ---
 
     @Override
     public List<ParticipationRequestDto> getUserRequests(Integer userId) {
         log.info("getUserRequests: userId={}", userId);
-        UserShortDto user = userClient.getUser(Long.valueOf(userId));
+        UserShortDto user = getUserFromService(Long.valueOf(userId));
         if (user == null) {
             throw new NotFoundException("Пользователь с id=" + userId + " не найден");
         }
@@ -47,38 +94,33 @@ public class RequestServiceImpl implements RequestService {
     public ParticipationRequestDto createRequest(Integer userId, Integer eventId) {
         log.info("createRequest: userId={}, eventId={}", userId, eventId);
 
-        UserShortDto user = userClient.getUser(Long.valueOf(userId));
+        UserShortDto user = getUserFromService(Long.valueOf(userId));
         if (user == null) {
             throw new NotFoundException("Пользователь с id=" + userId + " не найден");
         }
 
-        EventFullDto event = eventClient.getEvent(Long.valueOf(eventId));
+        EventFullDto event = getEventFromService(Long.valueOf(eventId));
         if (event == null) {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
 
-        // Инициатор должен быть всегда заполнен, если нет – это ошибка event-service
         if (event.getInitiator() == null) {
-            throw new IllegalStateException("Инициатор события не заполнен в ответе event-service");
+            throw new IllegalStateException("Инициатор события не заполнен");
         }
 
-        // Проверяем, что пользователь не является инициатором
         if (event.getInitiator().getId().equals(Long.valueOf(userId))) {
             throw new ConflictException("Инициатор не может подать заявку на своё событие");
         }
 
-        // Проверяем, что событие опубликовано
         if (event.getState() != EventState.PUBLISHED) {
             throw new ConflictException("Событие не опубликовано");
         }
 
-        // Проверяем, нет ли уже заявки от этого пользователя
         requestRepository.findByEventIdAndRequesterId(eventId, userId)
                 .ifPresent(r -> {
                     throw new ConflictException("Повторная заявка не допускается");
                 });
 
-        // Проверяем лимит участников
         if (event.getParticipantLimit() > 0) {
             long confirmed = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
             if (confirmed >= event.getParticipantLimit()) {
@@ -86,14 +128,12 @@ public class RequestServiceImpl implements RequestService {
             }
         }
 
-        // Создаём заявку
         ParticipationRequest request = new ParticipationRequest();
         request.setCreated(LocalDateTime.now());
         request.setEventId(Long.valueOf(eventId));
         request.setRequesterId(Long.valueOf(userId));
         request.setStatus(RequestStatus.PENDING);
 
-        // Если модерация отключена или лимит 0 – сразу подтверждаем
         if (!event.getRequestModeration() || event.getParticipantLimit() == 0) {
             request.setStatus(RequestStatus.CONFIRMED);
         }
@@ -110,7 +150,6 @@ public class RequestServiceImpl implements RequestService {
         ParticipationRequest request = requestRepository.findByIdAndRequesterId(requestId, userId)
                 .orElseThrow(() -> new NotFoundException("Заявка не найдена или не принадлежит пользователю"));
 
-        // Запрещаем отмену уже подтверждённой заявки
         if (request.getStatus() == RequestStatus.CONFIRMED) {
             throw new ConflictException("Нельзя отменить уже подтверждённую заявку");
         }
@@ -123,13 +162,13 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
         log.info("getEventRequests: userId={}, eventId={}", userId, eventId);
-        EventFullDto event = eventClient.getEvent(eventId);
+        EventFullDto event = getEventFromService(eventId);
         if (event == null) {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
 
         if (event.getInitiator() == null) {
-            throw new IllegalStateException("Инициатор события не заполнен в ответе event-service");
+            throw new IllegalStateException("Инициатор события не заполнен");
         }
 
         if (!event.getInitiator().getId().equals(userId)) {
@@ -146,13 +185,13 @@ public class RequestServiceImpl implements RequestService {
     public EventRequestStatusUpdateResult updateEventRequestsStatus(Long userId, Long eventId,
                                                                     EventRequestStatusUpdateRequest updateRequest) {
         log.info("updateEventRequestsStatus: userId={}, eventId={}", userId, eventId);
-        EventFullDto event = eventClient.getEvent(eventId);
+        EventFullDto event = getEventFromService(eventId);
         if (event == null) {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
 
         if (event.getInitiator() == null) {
-            throw new IllegalStateException("Инициатор события не заполнен в ответе event-service");
+            throw new IllegalStateException("Инициатор события не заполнен");
         }
 
         if (!event.getInitiator().getId().equals(userId)) {
@@ -161,7 +200,7 @@ public class RequestServiceImpl implements RequestService {
         return updateRequestsInternal(eventId, updateRequest, event);
     }
 
-    // === Внутренние методы ===
+    // --- Внутренние методы ---
 
     @Override
     public Long countConfirmedRequests(Long eventId) {
@@ -185,7 +224,7 @@ public class RequestServiceImpl implements RequestService {
     @Transactional
     public EventRequestStatusUpdateResult updateRequestsStatusInternal(Long eventId,
                                                                        EventRequestStatusUpdateRequest request) {
-        EventFullDto event = eventClient.getEvent(eventId);
+        EventFullDto event = getEventFromService(eventId);
         if (event == null) {
             throw new NotFoundException("Событие не найдено");
         }

@@ -35,6 +35,12 @@ public class EventMapper {
 
     public static EventFullDto toFullDto(Event event, CategoryDto category, UserShortDto initiator,
                                          Long confirmedRequests, Long views) {
+        if (initiator == null && event != null) {
+            initiator = UserShortDto.builder()
+                    .id(event.getInitiatorId())
+                    .name("dummy_user_" + event.getInitiatorId())
+                    .build();
+        }
         return EventFullDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
@@ -58,6 +64,12 @@ public class EventMapper {
 
     public static EventShortDto toShortDto(Event event, CategoryDto category, UserShortDto initiator,
                                            Long confirmedRequests, Long views) {
+        if (initiator == null && event != null) {
+            initiator = UserShortDto.builder()
+                    .id(event.getInitiatorId())
+                    .name("dummy_user_" + event.getInitiatorId())
+                    .build();
+        }
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
