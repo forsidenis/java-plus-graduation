@@ -15,9 +15,6 @@ spring:
       retry:
         useRandomPolicy: true
         max-interval: 6000
-      loadbalancer:
-        ribbon:
-          enabled: false
 
 eureka:
   client:
