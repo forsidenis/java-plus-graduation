@@ -6,8 +6,8 @@ spring:
     name: rating-service
   datasource:
     url: jdbc:postgresql://localhost:5433/ewm-main
-    username: main
-    password: main
+    username: rating
+    password: rating
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
