@@ -5,7 +5,7 @@ spring:
   application:
     name: request-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/ewm-main
+    url: jdbc:postgresql://localhost:5460/request-service
     username: request
     password: request
     driver-class-name: org.postgresql.Driver

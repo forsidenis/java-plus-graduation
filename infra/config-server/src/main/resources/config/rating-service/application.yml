@@ -5,7 +5,7 @@ spring:
   application:
     name: rating-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/ewm-main
+    url: jdbc:postgresql://localhost:5450/rating-service
     username: rating
     password: rating
     driver-class-name: org.postgresql.Driver

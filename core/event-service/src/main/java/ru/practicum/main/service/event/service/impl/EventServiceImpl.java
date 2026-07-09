@@ -54,91 +54,57 @@ public class EventServiceImpl implements EventService {
     }
 
     private UserShortDto getUserFromService(Long userId) {
-        try {
-            String url = getServiceUrl("user-service") + "/internal/users/" + userId;
-            ResponseEntity<UserShortDto> response = restTemplate.exchange(
-                    url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {}
-            );
-            return response.getBody();
-        } catch (Exception e) {
-            log.warn("Не удалось получить пользователя из user-service: {}", e.getMessage());
-            return UserShortDto.builder().id(userId).name("dummy_user_" + userId).build();
-        }
+        String url = getServiceUrl("user-service") + "/internal/users/" + userId;
+        ResponseEntity<UserShortDto> response = restTemplate.exchange(
+                url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {}
+        );
+        return response.getBody();
     }
 
     private CategoryDto getCategoryFromService(Long catId) {
-        try {
-            String url = getServiceUrl("category-service") + "/internal/categories/" + catId;
-            ResponseEntity<CategoryDto> response = restTemplate.exchange(
-                    url, HttpMethod.GET, null, new ParameterizedTypeReference<CategoryDto>() {}
-            );
-            return response.getBody();
-        } catch (Exception e) {
-            log.warn("Не удалось получить категорию из category-service: {}", e.getMessage());
-            return CategoryDto.builder().id(catId).name("dummy_category_" + catId).build();
-        }
+        String url = getServiceUrl("category-service") + "/internal/categories/" + catId;
+        ResponseEntity<CategoryDto> response = restTemplate.exchange(
+                url, HttpMethod.GET, null, new ParameterizedTypeReference<CategoryDto>() {}
+        );
+        return response.getBody();
     }
 
     private Long countConfirmedRequestsFromService(Long eventId) {
-        try {
-            String url = getServiceUrl("request-service") + "/internal/requests/count/" + eventId;
-            ResponseEntity<Long> response = restTemplate.exchange(
-                    url, HttpMethod.GET, null, new ParameterizedTypeReference<Long>() {}
-            );
-            return response.getBody() != null ? response.getBody() : 0L;
-        } catch (Exception e) {
-            log.warn("Не удалось получить количество подтверждённых запросов из request-service: {}", e.getMessage());
-            return 0L;
-        }
+        String url = getServiceUrl("request-service") + "/internal/requests/count/" + eventId;
+        ResponseEntity<Long> response = restTemplate.exchange(
+                url, HttpMethod.GET, null, new ParameterizedTypeReference<Long>() {}
+        );
+        return response.getBody() != null ? response.getBody() : 0L;
     }
 
     private Boolean existsRequestConfirmedFromService(Long eventId, Long userId) {
-        try {
-            String url = getServiceUrl("request-service") + "/internal/requests/exists/" + eventId + "/" + userId;
-            ResponseEntity<Boolean> response = restTemplate.exchange(
-                    url, HttpMethod.GET, null, new ParameterizedTypeReference<Boolean>() {}
-            );
-            return response.getBody() != null && response.getBody();
-        } catch (Exception e) {
-            log.warn("Не удалось проверить существование запроса в request-service: {}", e.getMessage());
-            return false;
-        }
+        String url = getServiceUrl("request-service") + "/internal/requests/exists/" + eventId + "/" + userId;
+        ResponseEntity<Boolean> response = restTemplate.exchange(
+                url, HttpMethod.GET, null, new ParameterizedTypeReference<Boolean>() {}
+        );
+        return response.getBody() != null && response.getBody();
     }
 
     private List<ParticipationRequestDto> getRequestsByEventFromService(Long eventId) {
-        try {
-            String url = getServiceUrl("request-service") + "/internal/requests/event/" + eventId;
-            ResponseEntity<List<ParticipationRequestDto>> response = restTemplate.exchange(
-                    url, HttpMethod.GET, null, new ParameterizedTypeReference<List<ParticipationRequestDto>>() {}
-            );
-            return response.getBody() != null ? response.getBody() : List.of();
-        } catch (Exception e) {
-            log.warn("Не удалось получить запросы по событию из request-service: {}", e.getMessage());
-            return List.of();
-        }
+        String url = getServiceUrl("request-service") + "/internal/requests/event/" + eventId;
+        ResponseEntity<List<ParticipationRequestDto>> response = restTemplate.exchange(
+                url, HttpMethod.GET, null, new ParameterizedTypeReference<List<ParticipationRequestDto>>() {}
+        );
+        return response.getBody() != null ? response.getBody() : List.of();
     }
 
     private EventRequestStatusUpdateResult updateRequestsStatusFromService(Long eventId, EventRequestStatusUpdateRequest request) {
-        try {
-            String url = getServiceUrl("request-service") + "/internal/requests/event/" + eventId + "/status";
-            ResponseEntity<EventRequestStatusUpdateResult> response = restTemplate.exchange(
-                    url, HttpMethod.PATCH, null, new ParameterizedTypeReference<EventRequestStatusUpdateResult>() {}
-            );
-            return response.getBody() != null ? response.getBody() :
-                    EventRequestStatusUpdateResult.builder()
-                            .confirmedRequests(List.of())
-                            .rejectedRequests(List.of())
-                            .build();
-        } catch (Exception e) {
-            log.warn("Не удалось обновить статусы запросов в request-service: {}", e.getMessage());
-            return EventRequestStatusUpdateResult.builder()
-                    .confirmedRequests(List.of())
-                    .rejectedRequests(List.of())
-                    .build();
-        }
+        String url = getServiceUrl("request-service") + "/internal/requests/event/" + eventId + "/status";
+        ResponseEntity<EventRequestStatusUpdateResult> response = restTemplate.exchange(
+                url, HttpMethod.PATCH, null, new ParameterizedTypeReference<EventRequestStatusUpdateResult>() {}
+        );
+        return response.getBody() != null ? response.getBody() :
+                EventRequestStatusUpdateResult.builder()
+                        .confirmedRequests(List.of())
+                        .rejectedRequests(List.of())
+                        .build();
     }
 
-    // === Реализация новых методов ===
 
     @Override
     public List<ParticipationRequestDto> getRequestsByEvent(Long eventId) {
@@ -150,7 +116,6 @@ public class EventServiceImpl implements EventService {
         return updateRequestsStatusFromService(eventId, request);
     }
 
-    // === Основные методы ===
 
     @Override
     @Transactional
@@ -164,7 +129,6 @@ public class EventServiceImpl implements EventService {
         if (category == null) {
             throw new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена");
         }
-
         if (dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
             throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
