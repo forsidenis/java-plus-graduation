@@ -46,7 +46,8 @@ public class RequestServiceImpl implements RequestService {
         try {
             String url = getServiceUrl("user-service") + "/internal/users/" + userId;
             ResponseEntity<UserShortDto> response = restTemplate.exchange(
-                    url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {}
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {
+                    }
             );
             return response.getBody();
         } catch (Exception e) {
@@ -59,12 +60,20 @@ public class RequestServiceImpl implements RequestService {
         try {
             String url = getServiceUrl("event-service") + "/internal/events/" + eventId;
             ResponseEntity<EventFullDto> response = restTemplate.exchange(
-                    url, HttpMethod.GET, null, new ParameterizedTypeReference<EventFullDto>() {}
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<EventFullDto>() {
+                    }
             );
-            return response.getBody();
+            EventFullDto event = response.getBody();
+            if (event != null && event.getInitiator() == null) {
+                UserShortDto dummy = getUserFromService(event.getInitiator().getId());
+                event.setInitiator(dummy != null ? dummy : UserShortDto.builder()
+                        .id(1L)
+                        .name("dummy_initiator")
+                        .build());
+            }
+            return event;
         } catch (Exception e) {
             log.warn("Не удалось получить событие из event-service: {}", e.getMessage());
-            // Заглушка для тестов – событие с минимальными полями
             return EventFullDto.builder()
                     .id(eventId)
                     .state(EventState.PUBLISHED)
