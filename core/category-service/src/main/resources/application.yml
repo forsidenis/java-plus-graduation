@@ -16,18 +16,6 @@ spring:
         useRandomPolicy: true
         max-interval: 6000
 
-feign:
-  circuitbreaker:
-    enabled: true
-  httpclient:
-    enabled: true
-  client:
-    config:
-      default:
-        connectTimeout: 5000
-        readTimeout: 5000
-        loggerLevel: basic
-
 
 eureka:
   client:
