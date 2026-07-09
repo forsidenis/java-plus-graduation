@@ -17,7 +17,6 @@ import org.springframework.web.client.RestTemplate;
 import ru.practicum.common.dto.*;
 import ru.practicum.common.exception.ConflictException;
 import ru.practicum.common.exception.NotFoundException;
-import ru.practicum.common.exception.ConditionsNotMetException;
 import ru.practicum.main.service.event.mapper.EventMapper;
 import ru.practicum.main.service.event.model.Event;
 import ru.practicum.main.service.event.repository.EventRepository;
@@ -45,17 +44,14 @@ public class EventServiceImpl implements EventService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    // Вспомогательный метод для получения URL сервиса через DiscoveryClient
     private String getServiceUrl(String serviceName) {
         List<ServiceInstance> instances = discoveryClient.getInstances(serviceName);
         if (instances == null || instances.isEmpty()) {
-            throw new IllegalStateException("No instances found for service: " + serviceName);
+            throw new IllegalStateException("Не найдено экземпляров сервиса: " + serviceName);
         }
         ServiceInstance instance = instances.get(0);
         return instance.getUri().toString();
     }
-
-    // === Методы для вызова других сервисов через RestTemplate ===
 
     private UserShortDto getUserFromService(Long userId) {
         try {
@@ -65,11 +61,8 @@ public class EventServiceImpl implements EventService {
             );
             return response.getBody();
         } catch (Exception e) {
-            log.warn("Failed to get user from user-service: {}", e.getMessage());
-            return UserShortDto.builder()
-                    .id(userId)
-                    .name("dummy_user_" + userId)
-                    .build();
+            log.warn("Не удалось получить пользователя из user-service: {}", e.getMessage());
+            return UserShortDto.builder().id(userId).name("dummy_user_" + userId).build();
         }
     }
 
@@ -81,11 +74,8 @@ public class EventServiceImpl implements EventService {
             );
             return response.getBody();
         } catch (Exception e) {
-            log.warn("Failed to get category from category-service: {}", e.getMessage());
-            return CategoryDto.builder()
-                    .id(catId)
-                    .name("dummy_category_" + catId)
-                    .build();
+            log.warn("Не удалось получить категорию из category-service: {}", e.getMessage());
+            return CategoryDto.builder().id(catId).name("dummy_category_" + catId).build();
         }
     }
 
@@ -97,7 +87,7 @@ public class EventServiceImpl implements EventService {
             );
             return response.getBody() != null ? response.getBody() : 0L;
         } catch (Exception e) {
-            log.warn("Failed to get confirmed requests from request-service: {}", e.getMessage());
+            log.warn("Не удалось получить количество подтверждённых запросов из request-service: {}", e.getMessage());
             return 0L;
         }
     }
@@ -110,7 +100,7 @@ public class EventServiceImpl implements EventService {
             );
             return response.getBody() != null && response.getBody();
         } catch (Exception e) {
-            log.warn("Failed to check request existence from request-service: {}", e.getMessage());
+            log.warn("Не удалось проверить существование запроса в request-service: {}", e.getMessage());
             return false;
         }
     }
@@ -123,7 +113,7 @@ public class EventServiceImpl implements EventService {
             );
             return response.getBody() != null ? response.getBody() : List.of();
         } catch (Exception e) {
-            log.warn("Failed to get requests by event from request-service: {}", e.getMessage());
+            log.warn("Не удалось получить запросы по событию из request-service: {}", e.getMessage());
             return List.of();
         }
     }
@@ -140,7 +130,7 @@ public class EventServiceImpl implements EventService {
                             .rejectedRequests(List.of())
                             .build();
         } catch (Exception e) {
-            log.warn("Failed to update requests status in request-service: {}", e.getMessage());
+            log.warn("Не удалось обновить статусы запросов в request-service: {}", e.getMessage());
             return EventRequestStatusUpdateResult.builder()
                     .confirmedRequests(List.of())
                     .rejectedRequests(List.of())
@@ -148,7 +138,19 @@ public class EventServiceImpl implements EventService {
         }
     }
 
-    // === Основные методы сервиса ===
+    // === Реализация новых методов ===
+
+    @Override
+    public List<ParticipationRequestDto> getRequestsByEvent(Long eventId) {
+        return getRequestsByEventFromService(eventId);
+    }
+
+    @Override
+    public EventRequestStatusUpdateResult updateRequestsStatus(Long eventId, EventRequestStatusUpdateRequest request) {
+        return updateRequestsStatusFromService(eventId, request);
+    }
+
+    // === Основные методы ===
 
     @Override
     @Transactional
@@ -156,14 +158,15 @@ public class EventServiceImpl implements EventService {
         log.info("createEvent: userId={}", userId);
         UserShortDto user = getUserFromService(userId);
         if (user == null) {
-            throw new NotFoundException("User not found id=" + userId);
+            throw new NotFoundException("Пользователь с id=" + userId + " не найден");
         }
         CategoryDto category = getCategoryFromService(dto.getCategory());
         if (category == null) {
-            throw new NotFoundException("Category not found id=" + dto.getCategory());
+            throw new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена");
         }
+
         if (dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new ConditionsNotMetException("Event date must be at least 2 hours later");
+            throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
         Event event = EventMapper.toEvent(dto, dto.getCategory(), userId);
         event = eventRepository.save(event);
@@ -175,7 +178,7 @@ public class EventServiceImpl implements EventService {
         log.info("getUserEvents: userId={}", userId);
         UserShortDto user = getUserFromService(userId);
         if (user == null) {
-            throw new NotFoundException("User not found");
+            throw new NotFoundException("Пользователь не найден");
         }
         Pageable pageable = PageRequest.of(from / size, size);
         List<Event> events = eventRepository.findAllByInitiatorId(userId, pageable);
@@ -188,7 +191,7 @@ public class EventServiceImpl implements EventService {
         Event event = findEventByIdAndInitiator(eventId, userId);
         UserShortDto user = getUserFromService(userId);
         if (user == null) {
-            throw new NotFoundException("User not found");
+            throw new NotFoundException("Пользователь не найден");
         }
         CategoryDto category = getCategoryFromService(event.getCategoryId());
         Long confirmed = countConfirmedRequestsFromService(eventId);
@@ -202,16 +205,16 @@ public class EventServiceImpl implements EventService {
         log.info("updateUserEvent: userId={}, eventId={}", userId, eventId);
         Event event = findEventByIdAndInitiator(eventId, userId);
         if (event.getState() != EventState.CANCELED && event.getState() != EventState.PENDING) {
-            throw new ConflictException("Only pending or canceled events can be changed");
+            throw new ConflictException("Изменять можно только события в статусе PENDING или CANCELED");
         }
         if (dto.getEventDate() != null && dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new ConditionsNotMetException("Event date must be at least 2 hours later");
+            throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
         Long categoryId = null;
         if (dto.getCategory() != null) {
             CategoryDto category = getCategoryFromService(dto.getCategory());
             if (category == null) {
-                throw new NotFoundException("Category not found");
+                throw new NotFoundException("Категория не найдена");
             }
             categoryId = dto.getCategory();
         }
@@ -220,7 +223,7 @@ public class EventServiceImpl implements EventService {
             switch (dto.getStateAction()) {
                 case "SEND_TO_REVIEW": event.setState(EventState.PENDING); break;
                 case "CANCEL_REVIEW": event.setState(EventState.CANCELED); break;
-                default: throw new IllegalArgumentException("Invalid action");
+                default: throw new IllegalArgumentException("Некорректное действие");
             }
         }
         event = eventRepository.save(event);
@@ -238,7 +241,7 @@ public class EventServiceImpl implements EventService {
                                                HttpServletRequest request) {
         log.info("getPublicEvents");
         if (rangeStart != null && rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
-            throw new IllegalArgumentException("rangeStart must be before rangeEnd");
+            throw new IllegalArgumentException("Дата начала не может быть позже даты окончания");
         }
         if (rangeStart == null) {
             rangeStart = LocalDateTime.now();
@@ -267,10 +270,10 @@ public class EventServiceImpl implements EventService {
     public EventFullDto getPublicEventById(Long eventId, HttpServletRequest request) {
         log.info("getPublicEventById: eventId={}", eventId);
         Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Event not found"));
+                .orElseThrow(() -> new NotFoundException("Событие не найдено"));
 
         if (event.getState() != EventState.PUBLISHED) {
-            throw new NotFoundException("Event is not published");
+            throw new NotFoundException("Событие не опубликовано");
         }
 
         saveHit(request);
@@ -295,12 +298,12 @@ public class EventServiceImpl implements EventService {
     public EventFullDto updateAdminEvent(Long eventId, UpdateEventAdminRequest dto) {
         log.info("updateAdminEvent: eventId={}", eventId);
         Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Event not found"));
+                .orElseThrow(() -> new NotFoundException("Событие не найдено"));
         Long categoryId = null;
         if (dto.getCategory() != null) {
             CategoryDto category = getCategoryFromService(dto.getCategory());
             if (category == null) {
-                throw new NotFoundException("Category not found");
+                throw new NotFoundException("Категория не найдена");
             }
             categoryId = dto.getCategory();
         }
@@ -308,18 +311,18 @@ public class EventServiceImpl implements EventService {
         if (dto.getStateAction() != null) {
             switch (dto.getStateAction()) {
                 case "PUBLISH_EVENT":
-                    if (event.getState() != EventState.PENDING) throw new ConflictException("Event not pending");
+                    if (event.getState() != EventState.PENDING) throw new ConflictException("Событие не в статусе PENDING");
                     if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
-                        throw new ConditionsNotMetException("Event date must be at least 1 hour after publish");
+                        throw new IllegalArgumentException("Дата события должна быть не ранее чем через 1 час после публикации");
                     }
                     event.setState(EventState.PUBLISHED);
                     event.setPublishedOn(LocalDateTime.now());
                     break;
                 case "REJECT_EVENT":
-                    if (event.getState() == EventState.PUBLISHED) throw new ConflictException("Cannot reject published");
+                    if (event.getState() == EventState.PUBLISHED) throw new ConflictException("Нельзя отклонить опубликованное событие");
                     event.setState(EventState.CANCELED);
                     break;
-                default: throw new IllegalArgumentException("Invalid action");
+                default: throw new IllegalArgumentException("Некорректное действие");
             }
         }
         event = eventRepository.save(event);
@@ -333,7 +336,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public EventFullDto getEventInternal(Long eventId) {
         Event event = eventRepository.findById(eventId)
-                .orElseThrow(() -> new NotFoundException("Event not found"));
+                .orElseThrow(() -> new NotFoundException("Событие не найдено"));
         CategoryDto category = getCategoryFromService(event.getCategoryId());
         UserShortDto user = getUserFromService(event.getInitiatorId());
         return EventMapper.toFullDto(event, category, user, 0L, 0L);
@@ -359,7 +362,7 @@ public class EventServiceImpl implements EventService {
     private Event findEventByIdAndInitiator(Long eventId, Long userId) {
         return eventRepository.findById(eventId)
                 .filter(e -> e.getInitiatorId().equals(userId))
-                .orElseThrow(() -> new NotFoundException("Event not found or not owned"));
+                .orElseThrow(() -> new NotFoundException("Событие не найдено или не принадлежит пользователю"));
     }
 
     private Long getViewsForEvent(Long eventId, LocalDateTime start) {
@@ -368,7 +371,7 @@ public class EventServiceImpl implements EventService {
             List<ViewStatsDto> stats = statsClient.getStats(start, LocalDateTime.now(), List.of("/events/" + eventId), true);
             return stats.isEmpty() ? 0L : stats.get(0).getHits();
         } catch (Exception e) {
-            log.warn("Failed to get views for event {}: {}", eventId, e.getMessage());
+            log.warn("Не удалось получить просмотры для события {}: {}", eventId, e.getMessage());
             return 0L;
         }
     }
@@ -382,11 +385,10 @@ public class EventServiceImpl implements EventService {
                     .timestamp(LocalDateTime.now())
                     .build());
         } catch (Exception e) {
-            log.warn("Failed to save hit: {}", e.getMessage());
+            log.warn("Не удалось сохранить обращение: {}", e.getMessage());
         }
     }
 
-    // ===== ВЫНЕСЕННЫЙ МЕТОД ДЛЯ ПОЛУЧЕНИЯ VIEWS =====
     private Map<Long, Long> getViewsMap(List<Event> events, LocalDateTime earliest) {
         try {
             List<String> uris = events.stream()
@@ -400,7 +402,7 @@ public class EventServiceImpl implements EventService {
                             (a, b) -> a
                     ));
         } catch (Exception e) {
-            log.warn("Failed to get views for events: {}", e.getMessage());
+            log.warn("Не удалось получить просмотры для событий: {}", e.getMessage());
             return Map.of();
         }
     }

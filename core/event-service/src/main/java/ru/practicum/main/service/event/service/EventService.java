@@ -1,12 +1,7 @@
 package ru.practicum.main.service.event.service;
 
 import jakarta.servlet.http.HttpServletRequest;
-import ru.practicum.common.dto.EventFullDto;
-import ru.practicum.common.dto.EventShortDto;
-import ru.practicum.common.dto.NewEventDto;
-import ru.practicum.common.dto.UpdateEventAdminRequest;
-import ru.practicum.common.dto.UpdateEventUserRequest;
-import ru.practicum.common.dto.EventState;
+import ru.practicum.common.dto.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -36,4 +31,8 @@ public interface EventService {
     List<EventShortDto> getEventsByIdsInternal(List<Long> ids);
 
     boolean isEventPublished(Long eventId);
+
+    List<ParticipationRequestDto> getRequestsByEvent(Long eventId);
+
+    EventRequestStatusUpdateResult updateRequestsStatus(Long eventId, EventRequestStatusUpdateRequest request);
 }

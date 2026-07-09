@@ -8,7 +8,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.common.dto.*;
-import ru.practicum.main.service.event.client.RequestClient;
 import ru.practicum.main.service.event.service.EventService;
 
 import java.util.List;
@@ -21,7 +20,6 @@ import java.util.List;
 public class PrivateEventController {
 
     private final EventService eventService;
-    private final RequestClient requestClient;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -58,8 +56,7 @@ public class PrivateEventController {
     public List<ParticipationRequestDto> getEventRequests(@PathVariable @Positive Long userId,
                                                           @PathVariable @Positive Long eventId) {
         log.info("GET /users/{}/events/{}/requests", userId, eventId);
-        // Проверка, что пользователь – инициатор события
-        return requestClient.getRequestsByEvent(eventId);
+        return eventService.getRequestsByEvent(eventId);
     }
 
     @PatchMapping("/{eventId}/requests")
@@ -67,7 +64,6 @@ public class PrivateEventController {
                                                                     @PathVariable @Positive Long eventId,
                                                                     @RequestBody EventRequestStatusUpdateRequest updateRequest) {
         log.info("PATCH /users/{}/events/{}/requests: {}", userId, eventId, updateRequest);
-        // Проверка прав инициатора должна быть выполнена в request-service
-        return requestClient.updateRequestsStatus(eventId, updateRequest);
+        return eventService.updateRequestsStatus(eventId, updateRequest);
     }
 }
