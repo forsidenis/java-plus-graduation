@@ -7,7 +7,7 @@ import ru.practicum.common.dto.EventShortDto;
 
 import java.util.List;
 
-@FeignClient(name = "event-service")
+@FeignClient(name = "event-service", fallback = EventClientFallback.class)
 public interface EventClient {
     @GetMapping("/internal/events/by-ids")
     List<EventShortDto> getEventsByIds(@RequestParam("ids") List<Long> ids);

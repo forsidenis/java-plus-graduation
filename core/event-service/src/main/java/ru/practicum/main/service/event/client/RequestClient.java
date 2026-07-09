@@ -9,7 +9,7 @@ import ru.practicum.main.service.event.config.FeignConfig;
 
 import java.util.List;
 
-@FeignClient(name = "request-service", configuration = FeignConfig.class)
+@FeignClient(name = "request-service", configuration = FeignConfig.class, fallback = RequestClientFallback.class)
 public interface RequestClient {
 
     @GetMapping("/internal/requests/count/{eventId}")
@@ -22,7 +22,7 @@ public interface RequestClient {
     @GetMapping("/internal/requests/event/{eventId}")
     List<ParticipationRequestDto> getRequestsByEvent(@PathVariable("eventId") Long eventId);
 
-    @RequestMapping(method = RequestMethod.PATCH, value = "/internal/requests/event/{eventId}/status")
+    @PatchMapping("/internal/requests/event/{eventId}/status")
     EventRequestStatusUpdateResult updateRequestsStatus(@PathVariable("eventId") Long eventId,
                                                         @RequestBody EventRequestStatusUpdateRequest request);
 }

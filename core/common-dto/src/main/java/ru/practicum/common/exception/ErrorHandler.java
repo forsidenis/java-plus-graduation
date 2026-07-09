@@ -3,6 +3,7 @@ package ru.practicum.common.exception;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -36,6 +37,13 @@ public class ErrorHandler {
         return buildApiError(HttpStatus.BAD_REQUEST, "Required request parameter is not present.", e.getMessage(), e);
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ApiError handleHttpMessageNotReadableException(final HttpMessageNotReadableException e) {
+        log.info("400 {}", e.getMessage(), e);
+        return buildApiError(HttpStatus.BAD_REQUEST, "Malformed JSON or missing request body.", e.getMessage(), e);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ApiError handleIllegalArgumentException(final IllegalArgumentException e) {
@@ -44,7 +52,7 @@ public class ErrorHandler {
     }
 
     @ExceptionHandler(ConditionsNotMetException.class)
-    @ResponseStatus(HttpStatus.CONFLICT)  // вместо BAD_REQUEST
+    @ResponseStatus(HttpStatus.CONFLICT)
     public ApiError handleConditionsNotMetException(final ConditionsNotMetException e) {
         log.info("409 {}", e.getMessage(), e);
         return buildApiError(HttpStatus.CONFLICT, "For the requested operation the conditions are not met.", e.getMessage(), e);
