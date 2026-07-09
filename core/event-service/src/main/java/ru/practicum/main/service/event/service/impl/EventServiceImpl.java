@@ -3,18 +3,21 @@ package ru.practicum.main.service.event.service.impl;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cloud.client.ServiceInstance;
+import org.springframework.cloud.client.discovery.DiscoveryClient;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 import ru.practicum.common.dto.*;
 import ru.practicum.common.exception.ConflictException;
 import ru.practicum.common.exception.NotFoundException;
 import ru.practicum.common.exception.ConditionsNotMetException;
-import ru.practicum.main.service.event.client.CategoryClient;
-import ru.practicum.main.service.event.client.RequestClient;
-import ru.practicum.main.service.event.client.UserClient;
 import ru.practicum.main.service.event.mapper.EventMapper;
 import ru.practicum.main.service.event.model.Event;
 import ru.practicum.main.service.event.repository.EventRepository;
@@ -37,21 +40,125 @@ public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
     private final StatsClient statsClient;
-    private final UserClient userClient;
-    private final CategoryClient categoryClient;
-    private final RequestClient requestClient;
+    private final DiscoveryClient discoveryClient;
+    private final RestTemplate restTemplate;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    // Вспомогательный метод для получения URL сервиса через DiscoveryClient
+    private String getServiceUrl(String serviceName) {
+        List<ServiceInstance> instances = discoveryClient.getInstances(serviceName);
+        if (instances == null || instances.isEmpty()) {
+            throw new IllegalStateException("No instances found for service: " + serviceName);
+        }
+        ServiceInstance instance = instances.get(0);
+        return instance.getUri().toString();
+    }
+
+    // === Методы для вызова других сервисов через RestTemplate ===
+
+    private UserShortDto getUserFromService(Long userId) {
+        try {
+            String url = getServiceUrl("user-service") + "/internal/users/" + userId;
+            ResponseEntity<UserShortDto> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            log.warn("Failed to get user from user-service: {}", e.getMessage());
+            return UserShortDto.builder()
+                    .id(userId)
+                    .name("dummy_user_" + userId)
+                    .build();
+        }
+    }
+
+    private CategoryDto getCategoryFromService(Long catId) {
+        try {
+            String url = getServiceUrl("category-service") + "/internal/categories/" + catId;
+            ResponseEntity<CategoryDto> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<CategoryDto>() {}
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            log.warn("Failed to get category from category-service: {}", e.getMessage());
+            return CategoryDto.builder()
+                    .id(catId)
+                    .name("dummy_category_" + catId)
+                    .build();
+        }
+    }
+
+    private Long countConfirmedRequestsFromService(Long eventId) {
+        try {
+            String url = getServiceUrl("request-service") + "/internal/requests/count/" + eventId;
+            ResponseEntity<Long> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<Long>() {}
+            );
+            return response.getBody() != null ? response.getBody() : 0L;
+        } catch (Exception e) {
+            log.warn("Failed to get confirmed requests from request-service: {}", e.getMessage());
+            return 0L;
+        }
+    }
+
+    private Boolean existsRequestConfirmedFromService(Long eventId, Long userId) {
+        try {
+            String url = getServiceUrl("request-service") + "/internal/requests/exists/" + eventId + "/" + userId;
+            ResponseEntity<Boolean> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<Boolean>() {}
+            );
+            return response.getBody() != null && response.getBody();
+        } catch (Exception e) {
+            log.warn("Failed to check request existence from request-service: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private List<ParticipationRequestDto> getRequestsByEventFromService(Long eventId) {
+        try {
+            String url = getServiceUrl("request-service") + "/internal/requests/event/" + eventId;
+            ResponseEntity<List<ParticipationRequestDto>> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<List<ParticipationRequestDto>>() {}
+            );
+            return response.getBody() != null ? response.getBody() : List.of();
+        } catch (Exception e) {
+            log.warn("Failed to get requests by event from request-service: {}", e.getMessage());
+            return List.of();
+        }
+    }
+
+    private EventRequestStatusUpdateResult updateRequestsStatusFromService(Long eventId, EventRequestStatusUpdateRequest request) {
+        try {
+            String url = getServiceUrl("request-service") + "/internal/requests/event/" + eventId + "/status";
+            ResponseEntity<EventRequestStatusUpdateResult> response = restTemplate.exchange(
+                    url, HttpMethod.PATCH, null, new ParameterizedTypeReference<EventRequestStatusUpdateResult>() {}
+            );
+            return response.getBody() != null ? response.getBody() :
+                    EventRequestStatusUpdateResult.builder()
+                            .confirmedRequests(List.of())
+                            .rejectedRequests(List.of())
+                            .build();
+        } catch (Exception e) {
+            log.warn("Failed to update requests status in request-service: {}", e.getMessage());
+            return EventRequestStatusUpdateResult.builder()
+                    .confirmedRequests(List.of())
+                    .rejectedRequests(List.of())
+                    .build();
+        }
+    }
+
+    // === Основные методы сервиса ===
 
     @Override
     @Transactional
     public EventFullDto createEvent(Long userId, NewEventDto dto) {
         log.info("createEvent: userId={}", userId);
-        UserShortDto user = userClient.getUser(userId);
+        UserShortDto user = getUserFromService(userId);
         if (user == null) {
             throw new NotFoundException("User not found id=" + userId);
         }
-        CategoryDto category = categoryClient.getCategory(dto.getCategory());
+        CategoryDto category = getCategoryFromService(dto.getCategory());
         if (category == null) {
             throw new NotFoundException("Category not found id=" + dto.getCategory());
         }
@@ -66,7 +173,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventShortDto> getUserEvents(Long userId, int from, int size) {
         log.info("getUserEvents: userId={}", userId);
-        UserShortDto user = userClient.getUser(userId);
+        UserShortDto user = getUserFromService(userId);
         if (user == null) {
             throw new NotFoundException("User not found");
         }
@@ -79,12 +186,12 @@ public class EventServiceImpl implements EventService {
     public EventFullDto getUserEventById(Long userId, Long eventId) {
         log.info("getUserEventById: userId={}, eventId={}", userId, eventId);
         Event event = findEventByIdAndInitiator(eventId, userId);
-        UserShortDto user = userClient.getUser(userId);
+        UserShortDto user = getUserFromService(userId);
         if (user == null) {
             throw new NotFoundException("User not found");
         }
-        CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        Long confirmed = getConfirmedRequestsSafely(eventId);
+        CategoryDto category = getCategoryFromService(event.getCategoryId());
+        Long confirmed = countConfirmedRequestsFromService(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
         return EventMapper.toFullDto(event, category, user, confirmed, views);
     }
@@ -102,7 +209,7 @@ public class EventServiceImpl implements EventService {
         }
         Long categoryId = null;
         if (dto.getCategory() != null) {
-            CategoryDto category = categoryClient.getCategory(dto.getCategory());
+            CategoryDto category = getCategoryFromService(dto.getCategory());
             if (category == null) {
                 throw new NotFoundException("Category not found");
             }
@@ -117,9 +224,9 @@ public class EventServiceImpl implements EventService {
             }
         }
         event = eventRepository.save(event);
-        UserShortDto user = userClient.getUser(userId);
-        CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        Long confirmed = getConfirmedRequestsSafely(eventId);
+        UserShortDto user = getUserFromService(userId);
+        CategoryDto category = getCategoryFromService(event.getCategoryId());
+        Long confirmed = countConfirmedRequestsFromService(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
         return EventMapper.toFullDto(event, category, user, confirmed, views);
     }
@@ -143,7 +250,7 @@ public class EventServiceImpl implements EventService {
             events = events.stream()
                     .filter(e -> {
                         if (e.getParticipantLimit() == 0) return true;
-                        long confirmed = getConfirmedRequestsSafely(e.getId());
+                        long confirmed = countConfirmedRequestsFromService(e.getId());
                         return confirmed < e.getParticipantLimit();
                     })
                     .collect(Collectors.toList());
@@ -167,9 +274,9 @@ public class EventServiceImpl implements EventService {
         }
 
         saveHit(request);
-        UserShortDto user = userClient.getUser(event.getInitiatorId());
-        CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        Long confirmed = getConfirmedRequestsSafely(eventId);
+        UserShortDto user = getUserFromService(event.getInitiatorId());
+        CategoryDto category = getCategoryFromService(event.getCategoryId());
+        Long confirmed = countConfirmedRequestsFromService(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
         return EventMapper.toFullDto(event, category, user, confirmed, views);
     }
@@ -191,7 +298,7 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new NotFoundException("Event not found"));
         Long categoryId = null;
         if (dto.getCategory() != null) {
-            CategoryDto category = categoryClient.getCategory(dto.getCategory());
+            CategoryDto category = getCategoryFromService(dto.getCategory());
             if (category == null) {
                 throw new NotFoundException("Category not found");
             }
@@ -216,9 +323,9 @@ public class EventServiceImpl implements EventService {
             }
         }
         event = eventRepository.save(event);
-        UserShortDto user = userClient.getUser(event.getInitiatorId());
-        CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        Long confirmed = getConfirmedRequestsSafely(eventId);
+        UserShortDto user = getUserFromService(event.getInitiatorId());
+        CategoryDto category = getCategoryFromService(event.getCategoryId());
+        Long confirmed = countConfirmedRequestsFromService(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
         return EventMapper.toFullDto(event, category, user, confirmed, views);
     }
@@ -227,8 +334,8 @@ public class EventServiceImpl implements EventService {
     public EventFullDto getEventInternal(Long eventId) {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Event not found"));
-        CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        UserShortDto user = userClient.getUser(event.getInitiatorId());
+        CategoryDto category = getCategoryFromService(event.getCategoryId());
+        UserShortDto user = getUserFromService(event.getInitiatorId());
         return EventMapper.toFullDto(event, category, user, 0L, 0L);
     }
 
@@ -262,15 +369,6 @@ public class EventServiceImpl implements EventService {
             return stats.isEmpty() ? 0L : stats.get(0).getHits();
         } catch (Exception e) {
             log.warn("Failed to get views for event {}: {}", eventId, e.getMessage());
-            return 0L;
-        }
-    }
-
-    private Long getConfirmedRequestsSafely(Long eventId) {
-        try {
-            return requestClient.countConfirmedRequests(eventId);
-        } catch (Exception e) {
-            log.warn("Failed to get confirmed requests for event {}: {}", eventId, e.getMessage());
             return 0L;
         }
     }
@@ -315,7 +413,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
                     try {
-                        CategoryDto cat = categoryClient.getCategory(id);
+                        CategoryDto cat = getCategoryFromService(id);
                         return cat != null ? cat : CategoryDto.builder().id(id).build();
                     } catch (Exception e) {
                         return CategoryDto.builder().id(id).build();
@@ -327,7 +425,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
                     try {
-                        UserShortDto user = userClient.getUser(id);
+                        UserShortDto user = getUserFromService(id);
                         return user != null ? user : UserShortDto.builder().id(id).build();
                     } catch (Exception e) {
                         return UserShortDto.builder().id(id).build();
@@ -335,7 +433,7 @@ public class EventServiceImpl implements EventService {
                 }));
 
         Map<Long, Long> confirmedMap = events.stream()
-                .collect(Collectors.toMap(Event::getId, e -> getConfirmedRequestsSafely(e.getId())));
+                .collect(Collectors.toMap(Event::getId, e -> countConfirmedRequestsFromService(e.getId())));
 
         LocalDateTime earliest = events.stream()
                 .map(e -> e.getPublishedOn() != null ? e.getPublishedOn() : e.getCreatedOn())
@@ -361,7 +459,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
                     try {
-                        CategoryDto cat = categoryClient.getCategory(id);
+                        CategoryDto cat = getCategoryFromService(id);
                         return cat != null ? cat : CategoryDto.builder().id(id).build();
                     } catch (Exception e) {
                         return CategoryDto.builder().id(id).build();
@@ -373,7 +471,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
                     try {
-                        UserShortDto user = userClient.getUser(id);
+                        UserShortDto user = getUserFromService(id);
                         return user != null ? user : UserShortDto.builder().id(id).build();
                     } catch (Exception e) {
                         return UserShortDto.builder().id(id).build();
@@ -381,7 +479,7 @@ public class EventServiceImpl implements EventService {
                 }));
 
         Map<Long, Long> confirmedMap = events.stream()
-                .collect(Collectors.toMap(Event::getId, e -> getConfirmedRequestsSafely(e.getId())));
+                .collect(Collectors.toMap(Event::getId, e -> countConfirmedRequestsFromService(e.getId())));
 
         LocalDateTime earliest = events.stream()
                 .map(e -> e.getPublishedOn() != null ? e.getPublishedOn() : e.getCreatedOn())
