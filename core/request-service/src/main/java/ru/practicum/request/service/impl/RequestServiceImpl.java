@@ -220,8 +220,7 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public boolean existsByEventAndUserAndStatusConfirmed(Long eventId, Long userId) {
-        return requestRepository.existsByEventIdAndRequesterIdAndStatus(
-                eventId.intValue(), userId.intValue(), RequestStatus.CONFIRMED);
+        return requestRepository.existsByEventIdAndRequesterIdAndStatus(eventId, userId, RequestStatus.CONFIRMED);
     }
 
     @Override
@@ -272,6 +271,7 @@ public class RequestServiceImpl implements RequestService {
                 } else {
                     req.setStatus(RequestStatus.REJECTED);
                     rejected.add(req);
+                    requestRepository.saveAll(requests);
                     throw new ConflictException("Достигнут лимит участников события");
                 }
             }
