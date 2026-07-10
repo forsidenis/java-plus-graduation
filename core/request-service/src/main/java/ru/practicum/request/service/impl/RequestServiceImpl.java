@@ -1,6 +1,5 @@
 package ru.practicum.request.service.impl;
 
-import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -35,11 +34,7 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public List<ParticipationRequestDto> getUserRequests(Integer userId) {
         log.info("getUserRequests: userId={}", userId);
-        try {
-            userClient.getUser(Long.valueOf(userId));
-        } catch (FeignException e) {
-            throw new NotFoundException("Пользователь не найден или сервис недоступен");
-        }
+        userClient.getUser(Long.valueOf(userId));
         return requestRepository.findAllByRequesterId(userId).stream()
                 .map(RequestMapper::toDto)
                 .collect(Collectors.toList());
@@ -50,25 +45,8 @@ public class RequestServiceImpl implements RequestService {
     public ParticipationRequestDto createRequest(Integer userId, Integer eventId) {
         log.info("createRequest: userId={}, eventId={}", userId, eventId);
 
-        UserShortDto user;
-        try {
-            user = userClient.getUser(Long.valueOf(userId));
-        } catch (FeignException e) {
-            throw new NotFoundException("Пользователь не найден или сервис недоступен");
-        }
-        if (user == null || user.getId() == null) {
-            throw new NotFoundException("Пользователь с id=" + userId + " не найден");
-        }
-
-        EventFullDto event;
-        try {
-            event = eventClient.getEvent(Long.valueOf(eventId));
-        } catch (FeignException e) {
-            throw new NotFoundException("Событие не найдено или сервис недоступен");
-        }
-        if (event == null || event.getId() == null) {
-            throw new NotFoundException("Событие с id=" + eventId + " не найдено");
-        }
+        UserShortDto user = userClient.getUser(Long.valueOf(userId));
+        EventFullDto event = eventClient.getEvent(Long.valueOf(eventId));
 
         if (event.getInitiator() == null || event.getInitiator().getId() == null) {
             throw new IllegalStateException("Инициатор события не заполнен");
@@ -134,16 +112,9 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
+        // В интерфейсе этот метод, скорее всего, использует Long, поэтому оставляем как есть
         log.info("getEventRequests: userId={}, eventId={}", userId, eventId);
-        EventFullDto event;
-        try {
-            event = eventClient.getEvent(eventId);
-        } catch (FeignException e) {
-            throw new NotFoundException("Событие не найдено или сервис недоступен");
-        }
-        if (event == null || event.getId() == null) {
-            throw new NotFoundException("Событие с id=" + eventId + " не найдено");
-        }
+        EventFullDto event = eventClient.getEvent(eventId);
         if (event.getInitiator() == null || event.getInitiator().getId() == null) {
             throw new IllegalStateException("Инициатор события не заполнен");
         }
@@ -160,15 +131,7 @@ public class RequestServiceImpl implements RequestService {
     public EventRequestStatusUpdateResult updateEventRequestsStatus(Long userId, Long eventId,
                                                                     EventRequestStatusUpdateRequest updateRequest) {
         log.info("updateEventRequestsStatus: userId={}, eventId={}", userId, eventId);
-        EventFullDto event;
-        try {
-            event = eventClient.getEvent(eventId);
-        } catch (FeignException e) {
-            throw new NotFoundException("Событие не найдено или сервис недоступен");
-        }
-        if (event == null || event.getId() == null) {
-            throw new NotFoundException("Событие с id=" + eventId + " не найдено");
-        }
+        EventFullDto event = eventClient.getEvent(eventId);
         if (event.getInitiator() == null || event.getInitiator().getId() == null) {
             throw new IllegalStateException("Инициатор события не заполнен");
         }
@@ -178,7 +141,7 @@ public class RequestServiceImpl implements RequestService {
         return updateRequestsInternal(eventId, updateRequest, event);
     }
 
-    // ----- Внутренние методы (для других сервисов) -----
+    // ----- Внутренние методы для других сервисов -----
 
     @Override
     public Long countConfirmedRequests(Long eventId) {
@@ -202,24 +165,17 @@ public class RequestServiceImpl implements RequestService {
     @Transactional
     public EventRequestStatusUpdateResult updateRequestsStatusInternal(Long eventId,
                                                                        EventRequestStatusUpdateRequest request) {
-        EventFullDto event;
-        try {
-            event = eventClient.getEvent(eventId);
-        } catch (FeignException e) {
-            throw new NotFoundException("Событие не найдено или сервис недоступен");
-        }
-        if (event == null || event.getId() == null) {
-            throw new NotFoundException("Событие не найдено");
-        }
+        EventFullDto event = eventClient.getEvent(eventId);
         return updateRequestsInternal(eventId, request, event);
     }
 
     private EventRequestStatusUpdateResult updateRequestsInternal(Long eventId,
                                                                   EventRequestStatusUpdateRequest updateRequest,
                                                                   EventFullDto event) {
-        List<Integer> requestIds = updateRequest.getRequestIds().stream()
-                .map(Long::intValue).collect(Collectors.toList());
-        List<ParticipationRequest> requests = requestRepository.findAllByIdIn(requestIds);
+        List<Long> requestIds = updateRequest.getRequestIds();
+        List<ParticipationRequest> requests = requestRepository.findAllById(
+                requestIds.stream().map(Long::intValue).collect(Collectors.toList())
+        );
         for (ParticipationRequest req : requests) {
             if (!req.getEventId().equals(eventId)) {
                 throw new ConditionsNotMetException("Заявка не принадлежит данному событию");

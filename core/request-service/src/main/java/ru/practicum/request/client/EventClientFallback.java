@@ -13,14 +13,17 @@ import java.time.LocalDateTime;
 public class EventClientFallback implements EventClient {
     @Override
     public EventFullDto getEvent(Long eventId) {
-        log.warn("EventClient fallback: event-service unavailable, returning dummy event for eventId={}", eventId);
+        log.warn("EventClient fallback: возвращаем заглушку для eventId={}", eventId);
         return EventFullDto.builder()
                 .id(eventId)
                 .state(EventState.PUBLISHED)
                 .eventDate(LocalDateTime.now().plusDays(1))
                 .participantLimit(0)
                 .requestModeration(true)
-                .initiator(UserShortDto.builder().id(1L).name("dummy_initiator").build())
+                .initiator(UserShortDto.builder()
+                        .id(1L)
+                        .name("dummy_initiator")
+                        .build())
                 .build();
     }
 }

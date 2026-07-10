@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class RequestClientFallback implements RequestClient {
     @Override
     public boolean existsByEventAndUserAndStatusConfirmed(Long eventId, Long userId) {
-        log.warn("RequestClient fallback: request-service unavailable, returning false for eventId={}, userId={}", eventId, userId);
+        log.warn("RequestClient fallback: возвращаем false для eventId={}, userId={}", eventId, userId);
         return false;
     }
 }

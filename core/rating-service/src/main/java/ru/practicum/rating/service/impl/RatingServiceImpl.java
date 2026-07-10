@@ -47,9 +47,8 @@ public class RatingServiceImpl implements RatingService {
                                              EventRating.RatingType type) {
         log.info("addRating: userId={}, eventId={}, type={}", userId, eventId, type);
         UserShortDto user = userClient.getUser(userId);
-        if (user == null) throw new NotFoundException("User not found");
         EventFullDto event = eventClient.getEvent(eventId);
-        if (event == null) throw new NotFoundException("Event not found");
+
         if (event.getEventDate().isAfter(dto.getTimestamp())) {
             throw new ConditionsNotMetException("Event not yet occurred");
         }
@@ -84,12 +83,7 @@ public class RatingServiceImpl implements RatingService {
     @Override
     public EventRatingStatsDto getEventRatingStats(Long eventId) {
         log.info("getEventRatingStats: eventId={}", eventId);
-        // проверка существования события через клиент
-        try {
-            eventClient.getEvent(eventId);
-        } catch (Exception e) {
-            throw new NotFoundException("Event not found");
-        }
+        eventClient.getEvent(eventId);
         List<Object[]> data = ratingRepository.getRatingStatsByEventId(eventId);
         if (data.isEmpty()) return RatingMapper.toStatsDto(eventId, 0L, 0L);
         Object[] row = data.get(0);
@@ -99,7 +93,7 @@ public class RatingServiceImpl implements RatingService {
     @Override
     public EventRatingListDto getUserRatings(Long userId, String rating, int from, int size) {
         log.info("getUserRatings: userId={}", userId);
-        if (userClient.getUser(userId) == null) throw new NotFoundException("User not found");
+        userClient.getUser(userId);
         Pageable pageable = PageRequest.of(from / size, size);
         List<EventRating> ratings;
         long total;

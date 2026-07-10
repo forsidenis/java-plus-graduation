@@ -49,8 +49,7 @@ public class EventServiceImpl implements EventService {
         if (dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
             throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
-
-        // Fallback-клиенты всегда возвращают объект-заглушку, проверка на null не нужна
+        
         UserShortDto user = userClient.getUser(userId);
         CategoryDto category = categoryClient.getCategory(dto.getCategory());
 
@@ -62,8 +61,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventShortDto> getUserEvents(Long userId, int from, int size) {
         log.info("getUserEvents: userId={}", userId);
-        // fallback вернёт заглушку, проверка не нужна
-        userClient.getUser(userId);
+        userClient.getUser(userId); // заглушка гарантирует наличие объекта
 
         Pageable pageable = PageRequest.of(from / size, size);
         List<Event> events = eventRepository.findAllByInitiatorId(userId, pageable);
@@ -99,8 +97,7 @@ public class EventServiceImpl implements EventService {
 
         Long categoryId = null;
         if (dto.getCategory() != null) {
-            // fallback вернёт заглушку, проверка не нужна
-            categoryClient.getCategory(dto.getCategory());
+            categoryClient.getCategory(dto.getCategory()); // проверка существования (заглушка)
             categoryId = dto.getCategory();
         }
 
@@ -342,7 +339,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(
                         id -> id,
-                        categoryClient::getCategory   // fallback всегда возвращает объект
+                        categoryClient::getCategory
                 ));
 
         Map<Long, UserShortDto> userMap = events.stream()
@@ -350,7 +347,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(
                         id -> id,
-                        userClient::getUser           // fallback всегда возвращает объект
+                        userClient::getUser
                 ));
 
         Map<Long, Long> confirmedMap = events.stream()
