@@ -1,11 +1,11 @@
 package ru.practicum.main.service.event.service.impl;
 
+import feign.FeignException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -25,6 +25,7 @@ import ru.practicum.stat.dto.ViewStatsDto;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -43,8 +44,6 @@ public class EventServiceImpl implements EventService {
     private final RequestClient requestClient;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-    // Вспомогательные методы с использованием Feign-клиентов
 
     private UserShortDto getUserFromService(Long userId) {
         try {
@@ -65,21 +64,48 @@ public class EventServiceImpl implements EventService {
     }
 
     private Long countConfirmedRequestsFromService(Long eventId) {
-        return requestClient.countConfirmedRequests(eventId);
+        try {
+            return requestClient.countConfirmedRequests(eventId);
+        } catch (FeignException e) {
+            if (e.status() == 404) {
+                return 0L;
+            }
+            throw e;
+        } catch (Exception e) {
+            log.warn("Не удалось получить количество подтверждённых заявок: {}", e.getMessage());
+            return 0L;
+        }
     }
 
     private Boolean existsRequestConfirmedFromService(Long eventId, Long userId) {
-        return requestClient.existsByEventAndUserAndStatusConfirmed(eventId, userId);
+        try {
+            return requestClient.existsByEventAndUserAndStatusConfirmed(eventId, userId);
+        } catch (Exception e) {
+            log.warn("Не удалось проверить наличие заявки: {}", e.getMessage());
+            return false;
+        }
     }
 
     private List<ParticipationRequestDto> getRequestsByEventFromService(Long eventId) {
-        return requestClient.getRequestsByEvent(eventId);
+        try {
+            return requestClient.getRequestsByEvent(eventId);
+        } catch (Exception e) {
+            log.warn("Не удалось получить заявки события: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 
     private EventRequestStatusUpdateResult updateRequestsStatusFromService(Long eventId, EventRequestStatusUpdateRequest request) {
         try {
-            return requestClient.updateRequestsStatus(eventId, request);
-        } catch (feign.FeignException e) {
+            EventRequestStatusUpdateResult result = requestClient.updateRequestsStatus(eventId, request);
+            if (result == null) {
+                return EventRequestStatusUpdateResult.builder()
+                        .confirmedRequests(Collections.emptyList())
+                        .rejectedRequests(Collections.emptyList())
+                        .build();
+            }
+            return result;
+        } catch (FeignException e) {
             if (e.status() == 409) {
                 throw new ConflictException("Достигнут лимит участников события");
             }
@@ -353,7 +379,7 @@ public class EventServiceImpl implements EventService {
     }
 
     private List<EventShortDto> enrichEventsWithStats(List<Event> events, boolean onlyPublished) {
-        if (events.isEmpty()) return List.of();
+        if (events.isEmpty()) return Collections.emptyList();
 
         Map<Long, CategoryDto> categoryMap = events.stream()
                 .map(Event::getCategoryId)
@@ -399,7 +425,7 @@ public class EventServiceImpl implements EventService {
     }
 
     private List<EventFullDto> enrichEventsFullWithStats(List<Event> events) {
-        if (events.isEmpty()) return List.of();
+        if (events.isEmpty()) return Collections.emptyList();
 
         Map<Long, CategoryDto> categoryMap = events.stream()
                 .map(Event::getCategoryId)

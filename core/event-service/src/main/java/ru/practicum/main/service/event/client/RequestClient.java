@@ -5,11 +5,10 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.common.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.common.dto.EventRequestStatusUpdateResult;
 import ru.practicum.common.dto.ParticipationRequestDto;
-import ru.practicum.main.service.event.config.FeignConfig;
 
 import java.util.List;
 
-@FeignClient(name = "request-service", configuration = FeignConfig.class)
+@FeignClient(name = "request-service")
 public interface RequestClient {
 
     @GetMapping("/internal/requests/count/{eventId}")

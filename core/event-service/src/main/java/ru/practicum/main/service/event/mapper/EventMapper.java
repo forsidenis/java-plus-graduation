@@ -35,17 +35,24 @@ public class EventMapper {
 
     public static EventFullDto toFullDto(Event event, CategoryDto category, UserShortDto initiator,
                                          Long confirmedRequests, Long views) {
-        if (initiator == null && event != null) {
+        if (event == null) return null;
+        if (initiator == null) {
             initiator = UserShortDto.builder()
                     .id(event.getInitiatorId())
                     .name("dummy_user_" + event.getInitiatorId())
+                    .build();
+        }
+        if (category == null) {
+            category = CategoryDto.builder()
+                    .id(event.getCategoryId())
+                    .name("dummy_category_" + event.getCategoryId())
                     .build();
         }
         return EventFullDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
                 .category(category)
-                .confirmedRequests(confirmedRequests)
+                .confirmedRequests(confirmedRequests != null ? confirmedRequests : 0L)
                 .createdOn(event.getCreatedOn())
                 .description(event.getDescription())
                 .eventDate(event.getEventDate())
@@ -56,7 +63,7 @@ public class EventMapper {
                 .requestModeration(event.getRequestModeration())
                 .state(event.getState())
                 .title(event.getTitle())
-                .views(views)
+                .views(views != null ? views : 0L)
                 .location(event.getLocation() != null ?
                         new LocationDto(event.getLocation().getLat(), event.getLocation().getLon()) : null)
                 .build();
@@ -64,27 +71,33 @@ public class EventMapper {
 
     public static EventShortDto toShortDto(Event event, CategoryDto category, UserShortDto initiator,
                                            Long confirmedRequests, Long views) {
-        if (initiator == null && event != null) {
+        if (event == null) return null;
+        if (initiator == null) {
             initiator = UserShortDto.builder()
                     .id(event.getInitiatorId())
                     .name("dummy_user_" + event.getInitiatorId())
+                    .build();
+        }
+        if (category == null) {
+            category = CategoryDto.builder()
+                    .id(event.getCategoryId())
+                    .name("dummy_category_" + event.getCategoryId())
                     .build();
         }
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
                 .category(category)
-                .confirmedRequests(confirmedRequests)
+                .confirmedRequests(confirmedRequests != null ? confirmedRequests : 0L)
                 .eventDate(event.getEventDate())
                 .initiator(initiator)
                 .paid(event.getPaid())
                 .title(event.getTitle())
-                .views(views)
+                .views(views != null ? views : 0L)
                 .build();
     }
 
     public static EventShortDto toShortDto(Event event) {
-        // заглушка, используется только внутри сервиса при внутренних вызовах
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
