@@ -73,7 +73,6 @@ public class CategoryServiceImpl implements CategoryService {
         if (!categoryRepository.existsById(catId)) {
             throw new NotFoundException("Категория с id=" + catId + " не найдена");
         }
-        // Проверка наличия событий через Feign-клиент с обработкой ошибок
         try {
             Long eventsCount = eventClient.countEventsByCategory(catId);
             if (eventsCount > 0) {
