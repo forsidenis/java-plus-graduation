@@ -10,18 +10,40 @@ spring:
         locator:
           enabled: true
       routes:
-        # ===== МАРШРУТЫ ДЛЯ EVENT-SERVICE =====
-        - id: event-service-admin
-          uri: lb://event-service
+        # ===== МАРШРУТЫ ДЛЯ REQUEST-SERVICE (специфичные должны идти первыми) =====
+        - id: request-service-private-events
+          uri: lb://request-service
           predicates:
-            - Path=/admin/events/**
+            - Path=/users/{userId}/events/{eventId}/requests/**
           filters:
             - StripPrefix=0
 
+        - id: request-service-private-requests
+          uri: lb://request-service
+          predicates:
+            - Path=/users/{userId}/requests/**
+          filters:
+            - StripPrefix=0
+
+        - id: request-service-all-with-status
+          uri: lb://request-service
+          predicates:
+            - Path=/users/{userId}/requests/allWithStatus/list
+          filters:
+            - StripPrefix=0
+
+        # ===== МАРШРУТЫ ДЛЯ EVENT-SERVICE =====
         - id: event-service-private
           uri: lb://event-service
           predicates:
             - Path=/users/{userId}/events/**
+          filters:
+            - StripPrefix=0
+
+        - id: event-service-admin
+          uri: lb://event-service
+          predicates:
+            - Path=/admin/events/**
           filters:
             - StripPrefix=0
 
@@ -59,28 +81,6 @@ spring:
           uri: lb://compilation-service
           predicates:
             - Path=/compilations/**
-          filters:
-            - StripPrefix=0
-
-        # ===== МАРШРУТЫ ДЛЯ REQUEST-SERVICE (специфичные сначала) =====
-        - id: request-service-all-with-status
-          uri: lb://request-service
-          predicates:
-            - Path=/users/{userId}/requests/allWithStatus/list
-          filters:
-            - StripPrefix=0
-
-        - id: request-service-private-events
-          uri: lb://request-service
-          predicates:
-            - Path=/users/{userId}/events/{eventId}/requests/**
-          filters:
-            - StripPrefix=0
-
-        - id: request-service-private-requests
-          uri: lb://request-service
-          predicates:
-            - Path=/users/{userId}/requests/**
           filters:
             - StripPrefix=0
 
