@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.common.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.common.dto.EventRequestStatusUpdateResult;
 import ru.practicum.common.dto.ParticipationRequestDto;
+import ru.practicum.common.dto.RequestStatus;
 
 import java.util.List;
 
@@ -24,4 +25,9 @@ public interface RequestClient {
     @PatchMapping("/internal/requests/event/{eventId}/status")
     EventRequestStatusUpdateResult updateRequestsStatus(@PathVariable("eventId") Long eventId,
                                                         @RequestBody EventRequestStatusUpdateRequest request);
+
+    @GetMapping("/internal/requests/all-with-status")
+    List<ParticipationRequestDto> getAllByEventIdInAndStatus(
+            @RequestParam("eventIds") List<Long> eventIds,
+            @RequestParam("status") RequestStatus status);
 }

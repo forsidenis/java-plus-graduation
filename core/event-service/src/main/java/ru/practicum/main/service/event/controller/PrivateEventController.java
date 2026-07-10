@@ -51,19 +51,4 @@ public class PrivateEventController {
         log.info("PATCH /users/{}/events/{} - обновление события: {}", userId, eventId, dto);
         return eventService.updateUserEvent(userId, eventId, dto);
     }
-
-    @GetMapping("/{eventId}/requests")
-    public List<ParticipationRequestDto> getEventRequests(@PathVariable @Positive Long userId,
-                                                          @PathVariable @Positive Long eventId) {
-        log.info("GET /users/{}/events/{}/requests", userId, eventId);
-        return eventService.getRequestsByEvent(eventId);
-    }
-
-    @PatchMapping("/{eventId}/requests")
-    public EventRequestStatusUpdateResult updateEventRequestsStatus(@PathVariable @Positive Long userId,
-                                                                    @PathVariable @Positive Long eventId,
-                                                                    @RequestBody EventRequestStatusUpdateRequest updateRequest) {
-        log.info("PATCH /users/{}/events/{}/requests: {}", userId, eventId, updateRequest);
-        return eventService.updateRequestsStatus(eventId, updateRequest);
-    }
 }

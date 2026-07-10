@@ -3,20 +3,22 @@ package ru.practicum.request.service;
 import ru.practicum.common.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.common.dto.EventRequestStatusUpdateResult;
 import ru.practicum.common.dto.ParticipationRequestDto;
+import ru.practicum.common.dto.RequestStatus;
 
 import java.util.List;
 
 public interface RequestService {
-    List<ParticipationRequestDto> getUserRequests(Integer userId);
+    List<ParticipationRequestDto> getUserRequests(Long userId);
 
-    ParticipationRequestDto createRequest(Integer userId, Integer eventId);
+    ParticipationRequestDto createRequest(Long userId, Long eventId);
 
-    ParticipationRequestDto cancelRequest(Integer userId, Integer requestId);
+    ParticipationRequestDto cancelRequest(Long userId, Long requestId);
 
     List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId);
 
-    EventRequestStatusUpdateResult updateEventRequestsStatus(Long userId, Long eventId,
-                                                             EventRequestStatusUpdateRequest updateRequest);
+    EventRequestStatusUpdateResult updateEventRequestsStatus(Long userId, Long eventId, EventRequestStatusUpdateRequest request);
+
+    List<ParticipationRequestDto> getAllByEventIdInAndStatus(List<Long> eventIds, RequestStatus status);
 
     // Внутренние методы для других сервисов
     Long countConfirmedRequests(Long eventId);
