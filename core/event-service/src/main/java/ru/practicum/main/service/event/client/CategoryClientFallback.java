@@ -9,7 +9,7 @@ import ru.practicum.common.dto.CategoryDto;
 public class CategoryClientFallback implements CategoryClient {
     @Override
     public CategoryDto getCategory(Long catId) {
-        log.warn("CategoryClient fallback: category-service unavailable, returning dummy category for catId={}", catId);
+        log.warn("CategoryClient fallback: возвращаем заглушку для catId={}", catId);
         return CategoryDto.builder()
                 .id(catId)
                 .name("dummy_category_" + catId)

@@ -9,7 +9,7 @@ import ru.practicum.common.dto.EventRatingStatsDto;
 public class RatingClientFallback implements RatingClient {
     @Override
     public EventRatingStatsDto getEventRatingStats(Long eventId) {
-        log.warn("RatingClient fallback: rating-service unavailable, returning zero stats for eventId={}", eventId);
+        log.warn("RatingClient fallback: возвращаем нулевую статистику для eventId={}", eventId);
         return EventRatingStatsDto.builder()
                 .eventId(eventId)
                 .likeCount(0L)

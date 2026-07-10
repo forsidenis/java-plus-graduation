@@ -9,7 +9,7 @@ import ru.practicum.common.dto.UserShortDto;
 public class UserClientFallback implements UserClient {
     @Override
     public UserShortDto getUser(Long userId) {
-        log.warn("UserClient fallback: user-service unavailable, returning dummy user for userId={}", userId);
+        log.warn("UserClient fallback: возвращаем заглушку для userId={}", userId);
         return UserShortDto.builder()
                 .id(userId)
                 .name("dummy_user_" + userId)

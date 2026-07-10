@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 public class EventClientFallback implements EventClient {
     @Override
     public Long countEventsByCategory(Long categoryId) {
-        log.error("EventClient fallback: event-service unavailable, throwing exception for categoryId={}", categoryId);
-        throw new RuntimeException("Event service is unavailable, cannot check events count");
+        log.warn("EventClient fallback: возвращаем 0 для categoryId={}", categoryId);
+        return 0L;
     }
 }

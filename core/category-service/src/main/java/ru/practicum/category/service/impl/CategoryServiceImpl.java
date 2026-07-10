@@ -82,10 +82,6 @@ public class CategoryServiceImpl implements CategoryService {
                 );
             }
         } catch (FeignException e) {
-            log.error("Event service unavailable while checking events for category {}", catId);
-            throw e;
-        } catch (Exception e) {
-            log.error("Ошибка при проверке событий для категории {}: {}", catId, e.getMessage());
             throw new ConditionsNotMetException(
                     "Невозможно удалить категорию, так как не удалось проверить наличие связанных событий. Повторите попытку позже."
             );

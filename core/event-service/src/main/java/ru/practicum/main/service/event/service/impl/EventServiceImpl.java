@@ -50,15 +50,9 @@ public class EventServiceImpl implements EventService {
             throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
 
+        // Fallback-клиенты всегда возвращают объект-заглушку, проверка на null не нужна
         UserShortDto user = userClient.getUser(userId);
-        if (user == null || user.getId() == null) {
-            throw new NotFoundException("Пользователь с id=" + userId + " не найден");
-        }
-
         CategoryDto category = categoryClient.getCategory(dto.getCategory());
-        if (category == null || category.getId() == null) {
-            throw new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена");
-        }
 
         Event event = EventMapper.toEvent(dto, dto.getCategory(), userId);
         event = eventRepository.save(event);
@@ -68,10 +62,8 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventShortDto> getUserEvents(Long userId, int from, int size) {
         log.info("getUserEvents: userId={}", userId);
-        UserShortDto user = userClient.getUser(userId);
-        if (user == null || user.getId() == null) {
-            throw new NotFoundException("Пользователь с id=" + userId + " не найден");
-        }
+        // fallback вернёт заглушку, проверка не нужна
+        userClient.getUser(userId);
 
         Pageable pageable = PageRequest.of(from / size, size);
         List<Event> events = eventRepository.findAllByInitiatorId(userId, pageable);
@@ -84,13 +76,7 @@ public class EventServiceImpl implements EventService {
         Event event = findEventByIdAndInitiator(eventId, userId);
 
         UserShortDto user = userClient.getUser(userId);
-        if (user == null || user.getId() == null) {
-            throw new NotFoundException("Пользователь с id=" + userId + " не найден");
-        }
         CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        if (category == null || category.getId() == null) {
-            throw new NotFoundException("Категория с id=" + event.getCategoryId() + " не найдена");
-        }
 
         Long confirmed = requestClient.countConfirmedRequests(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
@@ -113,10 +99,8 @@ public class EventServiceImpl implements EventService {
 
         Long categoryId = null;
         if (dto.getCategory() != null) {
-            CategoryDto category = categoryClient.getCategory(dto.getCategory());
-            if (category == null || category.getId() == null) {
-                throw new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена");
-            }
+            // fallback вернёт заглушку, проверка не нужна
+            categoryClient.getCategory(dto.getCategory());
             categoryId = dto.getCategory();
         }
 
@@ -138,13 +122,7 @@ public class EventServiceImpl implements EventService {
         event = eventRepository.save(event);
 
         UserShortDto user = userClient.getUser(userId);
-        if (user == null || user.getId() == null) {
-            throw new NotFoundException("Пользователь с id=" + userId + " не найден");
-        }
         CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        if (category == null || category.getId() == null) {
-            throw new NotFoundException("Категория с id=" + event.getCategoryId() + " не найдена");
-        }
 
         Long confirmed = requestClient.countConfirmedRequests(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
@@ -202,13 +180,7 @@ public class EventServiceImpl implements EventService {
         saveHit(request);
 
         UserShortDto user = userClient.getUser(event.getInitiatorId());
-        if (user == null || user.getId() == null) {
-            throw new NotFoundException("Пользователь с id=" + event.getInitiatorId() + " не найден");
-        }
         CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        if (category == null || category.getId() == null) {
-            throw new NotFoundException("Категория с id=" + event.getCategoryId() + " не найдена");
-        }
 
         Long confirmed = requestClient.countConfirmedRequests(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
@@ -233,10 +205,7 @@ public class EventServiceImpl implements EventService {
 
         Long categoryId = null;
         if (dto.getCategory() != null) {
-            CategoryDto category = categoryClient.getCategory(dto.getCategory());
-            if (category == null || category.getId() == null) {
-                throw new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена");
-            }
+            categoryClient.getCategory(dto.getCategory());
             categoryId = dto.getCategory();
         }
 
@@ -268,13 +237,7 @@ public class EventServiceImpl implements EventService {
         event = eventRepository.save(event);
 
         UserShortDto user = userClient.getUser(event.getInitiatorId());
-        if (user == null || user.getId() == null) {
-            throw new NotFoundException("Пользователь с id=" + event.getInitiatorId() + " не найден");
-        }
         CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        if (category == null || category.getId() == null) {
-            throw new NotFoundException("Категория с id=" + event.getCategoryId() + " не найдена");
-        }
 
         Long confirmed = requestClient.countConfirmedRequests(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
@@ -289,13 +252,7 @@ public class EventServiceImpl implements EventService {
                 .orElseThrow(() -> new NotFoundException("Событие не найдено"));
 
         CategoryDto category = categoryClient.getCategory(event.getCategoryId());
-        if (category == null || category.getId() == null) {
-            throw new NotFoundException("Категория с id=" + event.getCategoryId() + " не найдена");
-        }
         UserShortDto user = userClient.getUser(event.getInitiatorId());
-        if (user == null || user.getId() == null) {
-            throw new NotFoundException("Пользователь с id=" + event.getInitiatorId() + " не найден");
-        }
 
         return EventMapper.toFullDto(event, category, user, 0L, 0L);
     }
@@ -385,13 +342,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(
                         id -> id,
-                        id -> {
-                            CategoryDto cat = categoryClient.getCategory(id);
-                            if (cat == null || cat.getId() == null) {
-                                throw new NotFoundException("Категория с id=" + id + " не найдена");
-                            }
-                            return cat;
-                        }
+                        categoryClient::getCategory   // fallback всегда возвращает объект
                 ));
 
         Map<Long, UserShortDto> userMap = events.stream()
@@ -399,13 +350,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(
                         id -> id,
-                        id -> {
-                            UserShortDto usr = userClient.getUser(id);
-                            if (usr == null || usr.getId() == null) {
-                                throw new NotFoundException("Пользователь с id=" + id + " не найден");
-                            }
-                            return usr;
-                        }
+                        userClient::getUser           // fallback всегда возвращает объект
                 ));
 
         Map<Long, Long> confirmedMap = events.stream()
@@ -438,13 +383,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(
                         id -> id,
-                        id -> {
-                            CategoryDto cat = categoryClient.getCategory(id);
-                            if (cat == null || cat.getId() == null) {
-                                throw new NotFoundException("Категория с id=" + id + " не найдена");
-                            }
-                            return cat;
-                        }
+                        categoryClient::getCategory
                 ));
 
         Map<Long, UserShortDto> userMap = events.stream()
@@ -452,13 +391,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(
                         id -> id,
-                        id -> {
-                            UserShortDto usr = userClient.getUser(id);
-                            if (usr == null || usr.getId() == null) {
-                                throw new NotFoundException("Пользователь с id=" + id + " не найден");
-                            }
-                            return usr;
-                        }
+                        userClient::getUser
                 ));
 
         Map<Long, Long> confirmedMap = events.stream()

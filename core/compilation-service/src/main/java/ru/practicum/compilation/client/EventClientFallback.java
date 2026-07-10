@@ -12,7 +12,7 @@ import java.util.List;
 public class EventClientFallback implements EventClient {
     @Override
     public List<EventShortDto> getEventsByIds(List<Long> ids) {
-        log.warn("EventClient fallback: event-service unavailable, returning empty list for ids={}", ids);
+        log.warn("EventClient fallback: возвращаем пустой список для ids={}", ids);
         return Collections.emptyList();
     }
 }
