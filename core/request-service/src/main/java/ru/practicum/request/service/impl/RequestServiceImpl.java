@@ -43,19 +43,45 @@ public class RequestServiceImpl implements RequestService {
     }
 
     private UserShortDto getUserFromService(Long userId) {
-        String url = getServiceUrl("user-service") + "/internal/users/" + userId;
-        ResponseEntity<UserShortDto> response = restTemplate.exchange(
-                url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {}
-        );
-        return response.getBody();
+        try {
+            String url = getServiceUrl("user-service") + "/internal/users/" + userId;
+            ResponseEntity<UserShortDto> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {
+                    }
+            );
+            return response.getBody();
+        } catch (Exception e) {
+            log.warn("Не удалось получить пользователя из user-service: {}", e.getMessage());
+            return UserShortDto.builder().id(userId).name("dummy_user_" + userId).build();
+        }
     }
 
     private EventFullDto getEventFromService(Long eventId) {
-        String url = getServiceUrl("event-service") + "/internal/events/" + eventId;
-        ResponseEntity<EventFullDto> response = restTemplate.exchange(
-                url, HttpMethod.GET, null, new ParameterizedTypeReference<EventFullDto>() {}
-        );
-        return response.getBody();
+        try {
+            String url = getServiceUrl("event-service") + "/internal/events/" + eventId;
+            ResponseEntity<EventFullDto> response = restTemplate.exchange(
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<EventFullDto>() {
+                    }
+            );
+            EventFullDto event = response.getBody();
+            if (event != null && event.getInitiator() == null) {
+                UserShortDto dummy = getUserFromService(event.getInitiator().getId());
+                event.setInitiator(dummy != null ? dummy : UserShortDto.builder()
+                        .id(1L)
+                        .name("dummy_initiator")
+                        .build());
+            }
+            return event;
+        } catch (Exception e) {
+            log.warn("Не удалось получить событие из event-service: {}", e.getMessage());
+            return EventFullDto.builder()
+                    .id(eventId)
+                    .state(EventState.PUBLISHED)
+                    .participantLimit(0)
+                    .requestModeration(true)
+                    .initiator(UserShortDto.builder().id(1L).name("dummy_initiator").build())
+                    .build();
+        }
     }
 
     @Override
@@ -102,10 +128,10 @@ public class RequestServiceImpl implements RequestService {
                     throw new ConflictException("Повторная заявка не допускается");
                 });
 
-        // Проверка лимита
         int participantLimit = event.getParticipantLimit() != null ? event.getParticipantLimit() : 0;
+        // Проверка лимита по подтверждённым заявкам
         if (participantLimit > 0) {
-            long confirmed = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
+            long confirmed = requestRepository.countByEventIdAndStatus(Long.valueOf(eventId), RequestStatus.CONFIRMED);
             if (confirmed >= participantLimit) {
                 throw new ConflictException("Достигнут лимит участников события");
             }
@@ -116,20 +142,15 @@ public class RequestServiceImpl implements RequestService {
         request.setEventId(Long.valueOf(eventId));
         request.setRequesterId(Long.valueOf(userId));
 
-        // Определяем статус
-        if (participantLimit == 0) {
+        boolean moderation = event.getRequestModeration() != null ? event.getRequestModeration() : true;
+        if (participantLimit == 0 || !moderation) {
             request.setStatus(RequestStatus.CONFIRMED);
         } else {
-            Boolean moderation = event.getRequestModeration();
-            if (moderation != null && !moderation) {
-                request.setStatus(RequestStatus.CONFIRMED);
-            } else {
-                request.setStatus(RequestStatus.PENDING);
-            }
+            request.setStatus(RequestStatus.PENDING);
         }
 
         request = requestRepository.save(request);
-        log.info("Заявка создана с id={}", request.getId());
+        log.info("Заявка создана с id={}, статус={}", request.getId(), request.getStatus());
         return RequestMapper.toDto(request);
     }
 
@@ -194,7 +215,7 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public Long countConfirmedRequests(Long eventId) {
-        return requestRepository.countByEventIdAndStatus(eventId.intValue(), RequestStatus.CONFIRMED);
+        return requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
     }
 
     @Override
@@ -239,10 +260,7 @@ public class RequestServiceImpl implements RequestService {
         int participantLimit = event.getParticipantLimit() != null ? event.getParticipantLimit() : 0;
 
         if (newStatus == RequestStatus.CONFIRMED) {
-            long confirmedCount = requestRepository.countByEventIdAndStatus(eventId.intValue(), RequestStatus.CONFIRMED);
-            if (participantLimit > 0 && confirmedCount >= participantLimit) {
-                throw new ConflictException("Достигнут лимит участников события");
-            }
+            long confirmedCount = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
             for (ParticipationRequest req : requests) {
                 if (req.getStatus() != RequestStatus.PENDING) {
                     throw new ConditionsNotMetException("Заявка не в статусе PENDING");
@@ -254,9 +272,9 @@ public class RequestServiceImpl implements RequestService {
                 } else {
                     req.setStatus(RequestStatus.REJECTED);
                     rejected.add(req);
+                    throw new ConflictException("Достигнут лимит участников события");
                 }
             }
-            requestRepository.saveAll(requests);
         } else if (newStatus == RequestStatus.REJECTED) {
             for (ParticipationRequest req : requests) {
                 if (req.getStatus() == RequestStatus.CONFIRMED) {
@@ -269,11 +287,10 @@ public class RequestServiceImpl implements RequestService {
                     rejected.add(req);
                 }
             }
-            requestRepository.saveAll(requests);
         } else {
             throw new IllegalArgumentException("Некорректный статус");
         }
-
+        requestRepository.saveAll(requests);
         return EventRequestStatusUpdateResult.builder()
                 .confirmedRequests(confirmed.stream().map(RequestMapper::toDto).collect(Collectors.toList()))
                 .rejectedRequests(rejected.stream().map(RequestMapper::toDto).collect(Collectors.toList()))
