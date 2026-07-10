@@ -33,11 +33,9 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public CategoryDto createCategory(CategoryDto categoryDto) {
         log.info("Создание новой категории с именем: {}", categoryDto.getName());
-
         if (categoryRepository.existsByName(categoryDto.getName())) {
             throw new AlreadyExistsException("Категория с именем '" + categoryDto.getName() + "' уже существует");
         }
-
         Category category = CategoryMapper.toEntity(categoryDto);
         try {
             category = categoryRepository.save(category);
@@ -52,17 +50,13 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public CategoryDto updateCategory(Long catId, CategoryDto categoryDto) {
         log.info("Обновление категории с id: {}", catId);
-
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new NotFoundException("Категория с id=" + catId + " не найдена"));
-
         if (!category.getName().equals(categoryDto.getName()) &&
                 categoryRepository.existsByName(categoryDto.getName())) {
             throw new AlreadyExistsException("Категория с именем '" + categoryDto.getName() + "' уже существует");
         }
-
         category.setName(categoryDto.getName());
-
         try {
             category = categoryRepository.save(category);
             log.info("Категория с id: {} успешно обновлена", catId);
@@ -76,18 +70,21 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public void deleteCategory(Long catId) {
         log.info("Удаление категории с id: {}", catId);
-
         if (!categoryRepository.existsById(catId)) {
             throw new NotFoundException("Категория с id=" + catId + " не найдена");
         }
-
-        Long eventsCount = eventClient.countEventsByCategory(catId);
-        if (eventsCount > 0) {
-            throw new ConditionsNotMetException(
-                    "Невозможно удалить категорию с id=" + catId + ", так как она связана с существующими событиями"
-            );
+        // Проверка наличия событий через Feign-клиент с обработкой ошибок
+        try {
+            Long eventsCount = eventClient.countEventsByCategory(catId);
+            if (eventsCount > 0) {
+                throw new ConditionsNotMetException(
+                        "Невозможно удалить категорию с id=" + catId + ", так как она связана с существующими событиями"
+                );
+            }
+        } catch (Exception e) {
+            log.error("Ошибка при проверке событий для категории {}: {}", catId, e.getMessage());
+            throw new ConditionsNotMetException("Невозможно удалить категорию, так как не удалось проверить наличие связанных событий");
         }
-
         try {
             categoryRepository.deleteById(catId);
             log.info("Категория с id: {} успешно удалена", catId);
@@ -101,10 +98,8 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public List<CategoryDto> getCategories(int from, int size) {
         log.info("Получение списка категорий с from={}, size={}", from, size);
-
         int page = from / size;
         Pageable pageable = PageRequest.of(page, size);
-
         return categoryRepository.findAll(pageable)
                 .stream()
                 .map(CategoryMapper::toDto)
@@ -114,10 +109,8 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryDto getCategory(Long catId) {
         log.info("Получение категории с id: {}", catId);
-
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new NotFoundException("Категория с id=" + catId + " не найдена"));
-
         return CategoryMapper.toDto(category);
     }
 }

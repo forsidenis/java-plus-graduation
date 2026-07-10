@@ -6,10 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
 import ru.practicum.common.dto.*;
 import ru.practicum.common.exception.ConflictException;
 import ru.practicum.common.exception.NotFoundException;
@@ -39,22 +37,22 @@ public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
     private final StatsClient statsClient;
-    private final RestTemplate restTemplate;
     private final UserClient userClient;
     private final CategoryClient categoryClient;
     private final RequestClient requestClient;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    // Вспомогательные методы с корректной обработкой Feign-ошибок
     private UserShortDto getUserFromService(Long userId) {
         try {
             return userClient.getUser(userId);
         } catch (FeignException e) {
-            log.warn("Feign error getting user {}: {}", userId, e.getMessage());
-            return UserShortDto.builder().id(userId).name("dummy_user_" + userId).build();
-        } catch (Exception e) {
-            log.warn("Error getting user {}: {}", userId, e.getMessage());
-            return UserShortDto.builder().id(userId).name("dummy_user_" + userId).build();
+            if (e.status() == 404) {
+                throw new NotFoundException("Пользователь с id=" + userId + " не найден");
+            }
+            log.error("Feign error getting user: {}", e.getMessage());
+            throw new RuntimeException("Ошибка при получении пользователя", e);
         }
     }
 
@@ -62,11 +60,11 @@ public class EventServiceImpl implements EventService {
         try {
             return categoryClient.getCategory(catId);
         } catch (FeignException e) {
-            log.warn("Feign error getting category {}: {}", catId, e.getMessage());
-            return CategoryDto.builder().id(catId).name("dummy_category_" + catId).build();
-        } catch (Exception e) {
-            log.warn("Error getting category {}: {}", catId, e.getMessage());
-            return CategoryDto.builder().id(catId).name("dummy_category_" + catId).build();
+            if (e.status() == 404) {
+                throw new NotFoundException("Категория с id=" + catId + " не найдена");
+            }
+            log.error("Feign error getting category: {}", e.getMessage());
+            throw new RuntimeException("Ошибка при получении категории", e);
         }
     }
 
@@ -74,45 +72,41 @@ public class EventServiceImpl implements EventService {
         try {
             return requestClient.countConfirmedRequests(eventId);
         } catch (FeignException e) {
-            if (e.status() == 404 || e.status() == 500) {
-                log.warn("Request service error for event {}: {}", eventId, e.getMessage());
+            if (e.status() == 404) {
                 return 0L;
             }
-            throw e;
-        } catch (Exception e) {
-            log.warn("Error counting confirmed requests for event {}: {}", eventId, e.getMessage());
-            return 0L;
+            log.error("Feign error counting requests: {}", e.getMessage());
+            throw new RuntimeException("Ошибка при подсчёте заявок", e);
         }
     }
 
     private Boolean existsRequestConfirmedFromService(Long eventId, Long userId) {
         try {
             return requestClient.existsByEventAndUserAndStatusConfirmed(eventId, userId);
-        } catch (Exception e) {
-            log.warn("Error checking request existence: {}", e.getMessage());
-            return false;
+        } catch (FeignException e) {
+            if (e.status() == 404) {
+                return false;
+            }
+            log.error("Feign error checking request: {}", e.getMessage());
+            throw new RuntimeException("Ошибка при проверке заявки", e);
         }
     }
 
     private List<ParticipationRequestDto> getRequestsByEventFromService(Long eventId) {
         try {
             return requestClient.getRequestsByEvent(eventId);
-        } catch (Exception e) {
-            log.warn("Error getting requests for event {}: {}", eventId, e.getMessage());
-            return Collections.emptyList();
+        } catch (FeignException e) {
+            if (e.status() == 404) {
+                return Collections.emptyList();
+            }
+            log.error("Feign error getting requests: {}", e.getMessage());
+            throw new RuntimeException("Ошибка при получении заявок", e);
         }
     }
 
     private EventRequestStatusUpdateResult updateRequestsStatusFromService(Long eventId, EventRequestStatusUpdateRequest request) {
         try {
-            EventRequestStatusUpdateResult result = requestClient.updateRequestsStatus(eventId, request);
-            if (result == null) {
-                return EventRequestStatusUpdateResult.builder()
-                        .confirmedRequests(Collections.emptyList())
-                        .rejectedRequests(Collections.emptyList())
-                        .build();
-            }
-            return result;
+            return requestClient.updateRequestsStatus(eventId, request);
         } catch (FeignException e) {
             if (e.status() == 409) {
                 throw new ConflictException("Достигнут лимит участников события");
@@ -121,12 +115,11 @@ public class EventServiceImpl implements EventService {
                 throw new NotFoundException("Событие или заявка не найдены");
             }
             log.error("Feign error updating request status: {}", e.getMessage());
-            throw new RuntimeException("Ошибка при обновлении статуса заявок");
-        } catch (Exception e) {
-            log.error("Error updating request status: {}", e.getMessage());
-            throw new RuntimeException("Ошибка при обновлении статуса заявок");
+            throw new RuntimeException("Ошибка при обновлении статуса заявок", e);
         }
     }
+
+    // ----- Публичные методы -----
 
     @Override
     public List<ParticipationRequestDto> getRequestsByEvent(Long eventId) {
@@ -143,13 +136,7 @@ public class EventServiceImpl implements EventService {
     public EventFullDto createEvent(Long userId, NewEventDto dto) {
         log.info("createEvent: userId={}", userId);
         UserShortDto user = getUserFromService(userId);
-        if (user == null) {
-            throw new NotFoundException("Пользователь с id=" + userId + " не найден");
-        }
         CategoryDto category = getCategoryFromService(dto.getCategory());
-        if (category == null) {
-            throw new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена");
-        }
         if (dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
             throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
@@ -161,10 +148,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventShortDto> getUserEvents(Long userId, int from, int size) {
         log.info("getUserEvents: userId={}", userId);
-        UserShortDto user = getUserFromService(userId);
-        if (user == null) {
-            throw new NotFoundException("Пользователь не найден");
-        }
+        getUserFromService(userId); // проверка существования пользователя
         Pageable pageable = PageRequest.of(from / size, size);
         List<Event> events = eventRepository.findAllByInitiatorId(userId, pageable);
         return enrichEventsWithStats(events, false);
@@ -175,9 +159,6 @@ public class EventServiceImpl implements EventService {
         log.info("getUserEventById: userId={}, eventId={}", userId, eventId);
         Event event = findEventByIdAndInitiator(eventId, userId);
         UserShortDto user = getUserFromService(userId);
-        if (user == null) {
-            throw new NotFoundException("Пользователь не найден");
-        }
         CategoryDto category = getCategoryFromService(event.getCategoryId());
         Long confirmed = countConfirmedRequestsFromService(eventId);
         Long views = getViewsForEvent(eventId, event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn());
@@ -198,9 +179,6 @@ public class EventServiceImpl implements EventService {
         Long categoryId = null;
         if (dto.getCategory() != null) {
             CategoryDto category = getCategoryFromService(dto.getCategory());
-            if (category == null) {
-                throw new NotFoundException("Категория не найдена");
-            }
             categoryId = dto.getCategory();
         }
         EventMapper.updateEventFromUserRequest(event, dto, categoryId);
@@ -257,11 +235,9 @@ public class EventServiceImpl implements EventService {
         log.info("getPublicEventById: eventId={}", eventId);
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Событие не найдено"));
-
         if (event.getState() != EventState.PUBLISHED) {
             throw new NotFoundException("Событие не опубликовано");
         }
-
         saveHit(request);
         UserShortDto user = getUserFromService(event.getInitiatorId());
         CategoryDto category = getCategoryFromService(event.getCategoryId());
@@ -288,16 +264,15 @@ public class EventServiceImpl implements EventService {
         Long categoryId = null;
         if (dto.getCategory() != null) {
             CategoryDto category = getCategoryFromService(dto.getCategory());
-            if (category == null) {
-                throw new NotFoundException("Категория не найдена");
-            }
             categoryId = dto.getCategory();
         }
         EventMapper.updateEventFromAdminRequest(event, dto, categoryId);
         if (dto.getStateAction() != null) {
             switch (dto.getStateAction()) {
                 case "PUBLISH_EVENT":
-                    if (event.getState() != EventState.PENDING) throw new ConflictException("Событие не в статусе PENDING");
+                    if (event.getState() != EventState.PENDING) {
+                        throw new ConflictException("Событие не в статусе PENDING");
+                    }
                     if (event.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
                         throw new IllegalArgumentException("Дата события должна быть не ранее чем через 1 час после публикации");
                     }
@@ -305,10 +280,13 @@ public class EventServiceImpl implements EventService {
                     event.setPublishedOn(LocalDateTime.now());
                     break;
                 case "REJECT_EVENT":
-                    if (event.getState() == EventState.PUBLISHED) throw new ConflictException("Нельзя отклонить опубликованное событие");
+                    if (event.getState() == EventState.PUBLISHED) {
+                        throw new ConflictException("Нельзя отклонить опубликованное событие");
+                    }
                     event.setState(EventState.CANCELED);
                     break;
-                default: throw new IllegalArgumentException("Некорректное действие");
+                default:
+                    throw new IllegalArgumentException("Некорректное действие");
             }
         }
         event = eventRepository.save(event);
@@ -401,8 +379,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
                     try {
-                        CategoryDto cat = getCategoryFromService(id);
-                        return cat != null ? cat : CategoryDto.builder().id(id).build();
+                        return getCategoryFromService(id);
                     } catch (Exception e) {
                         return CategoryDto.builder().id(id).build();
                     }
@@ -413,8 +390,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
                     try {
-                        UserShortDto user = getUserFromService(id);
-                        return user != null ? user : UserShortDto.builder().id(id).build();
+                        return getUserFromService(id);
                     } catch (Exception e) {
                         return UserShortDto.builder().id(id).build();
                     }
@@ -447,8 +423,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
                     try {
-                        CategoryDto cat = getCategoryFromService(id);
-                        return cat != null ? cat : CategoryDto.builder().id(id).build();
+                        return getCategoryFromService(id);
                     } catch (Exception e) {
                         return CategoryDto.builder().id(id).build();
                     }
@@ -459,8 +434,7 @@ public class EventServiceImpl implements EventService {
                 .distinct()
                 .collect(Collectors.toMap(id -> id, id -> {
                     try {
-                        UserShortDto user = getUserFromService(id);
-                        return user != null ? user : UserShortDto.builder().id(id).build();
+                        return getUserFromService(id);
                     } catch (Exception e) {
                         return UserShortDto.builder().id(id).build();
                     }

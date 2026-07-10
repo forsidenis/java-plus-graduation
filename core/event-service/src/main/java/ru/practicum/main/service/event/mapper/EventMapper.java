@@ -25,11 +25,9 @@ public class EventMapper {
                 .state(EventState.PENDING)
                 .title(dto.getTitle())
                 .build();
-
         if (dto.getLocation() != null) {
             event.setLocation(new Location(dto.getLocation().getLat(), dto.getLocation().getLon()));
         }
-
         return event;
     }
 
@@ -98,6 +96,7 @@ public class EventMapper {
     }
 
     public static EventShortDto toShortDto(Event event) {
+        if (event == null) return null;
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())

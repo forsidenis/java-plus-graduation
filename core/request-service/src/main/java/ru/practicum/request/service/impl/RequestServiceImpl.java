@@ -63,8 +63,7 @@ public class RequestServiceImpl implements RequestService {
             );
             EventFullDto event = response.getBody();
             if (event != null && event.getInitiator() == null) {
-                UserShortDto dummy = getUserFromService(1L);
-                event.setInitiator(dummy != null ? dummy : UserShortDto.builder().id(1L).name("dummy_initiator").build());
+                event.setInitiator(UserShortDto.builder().id(1L).name("dummy_initiator").build());
             }
             return event;
         } catch (Exception e) {
@@ -82,10 +81,7 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public List<ParticipationRequestDto> getUserRequests(Integer userId) {
         log.info("getUserRequests: userId={}", userId);
-        UserShortDto user = getUserFromService(Long.valueOf(userId));
-        if (user == null) {
-            throw new NotFoundException("Пользователь с id=" + userId + " не найден");
-        }
+        getUserFromService(Long.valueOf(userId));
         return requestRepository.findAllByRequesterId(userId).stream()
                 .map(RequestMapper::toDto)
                 .collect(Collectors.toList());
@@ -171,15 +167,12 @@ public class RequestServiceImpl implements RequestService {
         if (event == null) {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
-
         if (event.getInitiator() == null) {
             throw new IllegalStateException("Инициатор события не заполнен");
         }
-
         if (!event.getInitiator().getId().equals(userId)) {
             throw new ConditionsNotMetException("Пользователь не является инициатором события");
         }
-
         return requestRepository.findAllByEventId(eventId.intValue()).stream()
                 .map(RequestMapper::toDto)
                 .collect(Collectors.toList());
@@ -194,18 +187,16 @@ public class RequestServiceImpl implements RequestService {
         if (event == null) {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
-
         if (event.getInitiator() == null) {
             throw new IllegalStateException("Инициатор события не заполнен");
         }
-
         if (!event.getInitiator().getId().equals(userId)) {
             throw new ConditionsNotMetException("Пользователь не является инициатором события");
         }
         return updateRequestsInternal(eventId, updateRequest, event);
     }
 
-    // --- Внутренние методы ---
+    // ----- Внутренние методы -----
 
     @Override
     public Long countConfirmedRequests(Long eventId) {
