@@ -9,7 +9,7 @@ import ru.practicum.main.service.event.config.FeignConfig;
 
 import java.util.List;
 
-@FeignClient(name = "request-service", configuration = FeignConfig.class, fallback = RequestClientFallback.class)
+@FeignClient(name = "request-service", configuration = FeignConfig.class)
 public interface RequestClient {
 
     @GetMapping("/internal/requests/count/{eventId}")

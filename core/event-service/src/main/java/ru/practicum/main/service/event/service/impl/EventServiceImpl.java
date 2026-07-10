@@ -65,41 +65,25 @@ public class EventServiceImpl implements EventService {
     }
 
     private Long countConfirmedRequestsFromService(Long eventId) {
-        try {
-            return requestClient.countConfirmedRequests(eventId);
-        } catch (Exception e) {
-            log.warn("Не удалось получить количество подтверждённых заявок: {}", e.getMessage());
-            return 0L;
-        }
+        return requestClient.countConfirmedRequests(eventId);
     }
 
     private Boolean existsRequestConfirmedFromService(Long eventId, Long userId) {
-        try {
-            return requestClient.existsByEventAndUserAndStatusConfirmed(eventId, userId);
-        } catch (Exception e) {
-            log.warn("Не удалось проверить наличие заявки: {}", e.getMessage());
-            return false;
-        }
+        return requestClient.existsByEventAndUserAndStatusConfirmed(eventId, userId);
     }
 
     private List<ParticipationRequestDto> getRequestsByEventFromService(Long eventId) {
-        try {
-            return requestClient.getRequestsByEvent(eventId);
-        } catch (Exception e) {
-            log.warn("Не удалось получить заявки события: {}", e.getMessage());
-            return List.of();
-        }
+        return requestClient.getRequestsByEvent(eventId);
     }
 
     private EventRequestStatusUpdateResult updateRequestsStatusFromService(Long eventId, EventRequestStatusUpdateRequest request) {
         try {
             return requestClient.updateRequestsStatus(eventId, request);
-        } catch (Exception e) {
-            log.warn("Не удалось обновить статус заявок: {}", e.getMessage());
-            return EventRequestStatusUpdateResult.builder()
-                    .confirmedRequests(List.of())
-                    .rejectedRequests(List.of())
-                    .build();
+        } catch (feign.FeignException e) {
+            if (e.status() == 409) {
+                throw new ConflictException("Достигнут лимит участников события");
+            }
+            throw e;
         }
     }
 
