@@ -8,16 +8,10 @@ spring:
     active: native
   cloud:
     config:
-      fail-fast: true
-      retry:
-        useRandomPolicy: true
-      discovery:
-        enabled: true
-        serviceId: config-server
       server:
         native:
-          searchLocations:
-            - classpath:config/{application}/
+          searchLocations: classpath:config/{application}/
+
 eureka:
   client:
     serviceUrl:
