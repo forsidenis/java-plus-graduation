@@ -84,8 +84,6 @@ public class RequestServiceImpl implements RequestService {
         }
     }
 
-    // --- Основные методы ---
-
     @Override
     public List<ParticipationRequestDto> getUserRequests(Integer userId) {
         log.info("getUserRequests: userId={}", userId);
@@ -130,9 +128,10 @@ public class RequestServiceImpl implements RequestService {
                     throw new ConflictException("Повторная заявка не допускается");
                 });
 
-        if (event.getParticipantLimit() > 0) {
+        int participantLimit = event.getParticipantLimit() != null ? event.getParticipantLimit() : 0;
+        if (participantLimit > 0) {
             long confirmed = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
-            if (confirmed >= event.getParticipantLimit()) {
+            if (confirmed >= participantLimit) {
                 throw new ConflictException("Достигнут лимит участников события");
             }
         }
@@ -143,7 +142,8 @@ public class RequestServiceImpl implements RequestService {
         request.setRequesterId(Long.valueOf(userId));
         request.setStatus(RequestStatus.PENDING);
 
-        if (!event.getRequestModeration() || event.getParticipantLimit() == 0) {
+        boolean moderation = event.getRequestModeration() != null ? event.getRequestModeration() : true;
+        if (!moderation || participantLimit == 0) {
             request.setStatus(RequestStatus.CONFIRMED);
         }
 
@@ -257,7 +257,7 @@ public class RequestServiceImpl implements RequestService {
 
         if (newStatus == RequestStatus.CONFIRMED) {
             long confirmedCount = requestRepository.countByEventIdAndStatus(eventId.intValue(), RequestStatus.CONFIRMED);
-            long limit = event.getParticipantLimit();
+            long limit = event.getParticipantLimit() != null ? event.getParticipantLimit() : 0;
             for (ParticipationRequest req : requests) {
                 if (req.getStatus() != RequestStatus.PENDING) {
                     throw new ConditionsNotMetException("Заявка не в статусе PENDING");

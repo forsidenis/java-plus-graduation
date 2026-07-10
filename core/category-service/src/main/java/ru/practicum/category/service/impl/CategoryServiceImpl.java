@@ -7,14 +7,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.common.dto.CategoryDto;
-import ru.practicum.common.exception.AlreadyExistsException;
-import ru.practicum.common.exception.ConditionsNotMetException;
-import ru.practicum.common.exception.NotFoundException;
+import ru.practicum.category.client.EventClient;
 import ru.practicum.category.mapper.CategoryMapper;
 import ru.practicum.category.model.Category;
 import ru.practicum.category.repository.CategoryRepository;
 import ru.practicum.category.service.CategoryService;
+import ru.practicum.common.dto.CategoryDto;
+import ru.practicum.common.exception.AlreadyExistsException;
+import ru.practicum.common.exception.ConditionsNotMetException;
+import ru.practicum.common.exception.NotFoundException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final EventClient eventClient;
 
     @Override
     @Transactional
@@ -77,6 +79,14 @@ public class CategoryServiceImpl implements CategoryService {
 
         if (!categoryRepository.existsById(catId)) {
             throw new NotFoundException("Категория с id=" + catId + " не найдена");
+        }
+
+        // Проверяем, есть ли события, привязанные к этой категории
+        Long eventsCount = eventClient.countEventsByCategory(catId);
+        if (eventsCount > 0) {
+            throw new ConditionsNotMetException(
+                    "Невозможно удалить категорию с id=" + catId + ", так как она связана с существующими событиями"
+            );
         }
 
         try {

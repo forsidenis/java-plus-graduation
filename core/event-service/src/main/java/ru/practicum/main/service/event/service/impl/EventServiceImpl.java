@@ -3,20 +3,18 @@ package ru.practicum.main.service.event.service.impl;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cloud.client.ServiceInstance;
-import org.springframework.cloud.client.discovery.DiscoveryClient;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import ru.practicum.common.dto.*;
 import ru.practicum.common.exception.ConflictException;
 import ru.practicum.common.exception.NotFoundException;
+import ru.practicum.main.service.event.client.CategoryClient;
+import ru.practicum.main.service.event.client.RequestClient;
+import ru.practicum.main.service.event.client.UserClient;
 import ru.practicum.main.service.event.mapper.EventMapper;
 import ru.practicum.main.service.event.model.Event;
 import ru.practicum.main.service.event.repository.EventRepository;
@@ -39,72 +37,71 @@ public class EventServiceImpl implements EventService {
 
     private final EventRepository eventRepository;
     private final StatsClient statsClient;
-    private final DiscoveryClient discoveryClient;
     private final RestTemplate restTemplate;
+    private final UserClient userClient;
+    private final CategoryClient categoryClient;
+    private final RequestClient requestClient;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    private String getServiceUrl(String serviceName) {
-        List<ServiceInstance> instances = discoveryClient.getInstances(serviceName);
-        if (instances == null || instances.isEmpty()) {
-            throw new IllegalStateException("Не найдено экземпляров сервиса: " + serviceName);
-        }
-        ServiceInstance instance = instances.get(0);
-        return instance.getUri().toString();
-    }
+    // Вспомогательные методы с использованием Feign-клиентов
 
     private UserShortDto getUserFromService(Long userId) {
-        String url = getServiceUrl("user-service") + "/internal/users/" + userId;
-        ResponseEntity<UserShortDto> response = restTemplate.exchange(
-                url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {}
-        );
-        return response.getBody();
+        try {
+            return userClient.getUser(userId);
+        } catch (Exception e) {
+            log.warn("Не удалось получить пользователя из user-service: {}", e.getMessage());
+            return UserShortDto.builder().id(userId).name("dummy_user_" + userId).build();
+        }
     }
 
     private CategoryDto getCategoryFromService(Long catId) {
-        String url = getServiceUrl("category-service") + "/internal/categories/" + catId;
-        ResponseEntity<CategoryDto> response = restTemplate.exchange(
-                url, HttpMethod.GET, null, new ParameterizedTypeReference<CategoryDto>() {}
-        );
-        return response.getBody();
+        try {
+            return categoryClient.getCategory(catId);
+        } catch (Exception e) {
+            log.warn("Не удалось получить категорию из category-service: {}", e.getMessage());
+            return CategoryDto.builder().id(catId).name("dummy_category_" + catId).build();
+        }
     }
 
     private Long countConfirmedRequestsFromService(Long eventId) {
-        String url = getServiceUrl("request-service") + "/internal/requests/count/" + eventId;
-        ResponseEntity<Long> response = restTemplate.exchange(
-                url, HttpMethod.GET, null, new ParameterizedTypeReference<Long>() {}
-        );
-        return response.getBody() != null ? response.getBody() : 0L;
+        try {
+            return requestClient.countConfirmedRequests(eventId);
+        } catch (Exception e) {
+            log.warn("Не удалось получить количество подтверждённых заявок: {}", e.getMessage());
+            return 0L;
+        }
     }
 
     private Boolean existsRequestConfirmedFromService(Long eventId, Long userId) {
-        String url = getServiceUrl("request-service") + "/internal/requests/exists/" + eventId + "/" + userId;
-        ResponseEntity<Boolean> response = restTemplate.exchange(
-                url, HttpMethod.GET, null, new ParameterizedTypeReference<Boolean>() {}
-        );
-        return response.getBody() != null && response.getBody();
+        try {
+            return requestClient.existsByEventAndUserAndStatusConfirmed(eventId, userId);
+        } catch (Exception e) {
+            log.warn("Не удалось проверить наличие заявки: {}", e.getMessage());
+            return false;
+        }
     }
 
     private List<ParticipationRequestDto> getRequestsByEventFromService(Long eventId) {
-        String url = getServiceUrl("request-service") + "/internal/requests/event/" + eventId;
-        ResponseEntity<List<ParticipationRequestDto>> response = restTemplate.exchange(
-                url, HttpMethod.GET, null, new ParameterizedTypeReference<List<ParticipationRequestDto>>() {}
-        );
-        return response.getBody() != null ? response.getBody() : List.of();
+        try {
+            return requestClient.getRequestsByEvent(eventId);
+        } catch (Exception e) {
+            log.warn("Не удалось получить заявки события: {}", e.getMessage());
+            return List.of();
+        }
     }
 
     private EventRequestStatusUpdateResult updateRequestsStatusFromService(Long eventId, EventRequestStatusUpdateRequest request) {
-        String url = getServiceUrl("request-service") + "/internal/requests/event/" + eventId + "/status";
-        ResponseEntity<EventRequestStatusUpdateResult> response = restTemplate.exchange(
-                url, HttpMethod.PATCH, null, new ParameterizedTypeReference<EventRequestStatusUpdateResult>() {}
-        );
-        return response.getBody() != null ? response.getBody() :
-                EventRequestStatusUpdateResult.builder()
-                        .confirmedRequests(List.of())
-                        .rejectedRequests(List.of())
-                        .build();
+        try {
+            return requestClient.updateRequestsStatus(eventId, request);
+        } catch (Exception e) {
+            log.warn("Не удалось обновить статус заявок: {}", e.getMessage());
+            return EventRequestStatusUpdateResult.builder()
+                    .confirmedRequests(List.of())
+                    .rejectedRequests(List.of())
+                    .build();
+        }
     }
-
 
     @Override
     public List<ParticipationRequestDto> getRequestsByEvent(Long eventId) {
@@ -115,7 +112,6 @@ public class EventServiceImpl implements EventService {
     public EventRequestStatusUpdateResult updateRequestsStatus(Long eventId, EventRequestStatusUpdateRequest request) {
         return updateRequestsStatusFromService(eventId, request);
     }
-
 
     @Override
     @Transactional
