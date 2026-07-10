@@ -75,14 +75,16 @@ public class CategoryServiceImpl implements CategoryService {
         }
         try {
             Long eventsCount = eventClient.countEventsByCategory(catId);
-            if (eventsCount > 0) {
+            if (eventsCount != null && eventsCount > 0) {
                 throw new ConditionsNotMetException(
                         "Невозможно удалить категорию с id=" + catId + ", так как она связана с существующими событиями"
                 );
             }
         } catch (Exception e) {
             log.error("Ошибка при проверке событий для категории {}: {}", catId, e.getMessage());
-            throw new ConditionsNotMetException("Невозможно удалить категорию, так как не удалось проверить наличие связанных событий");
+            throw new ConditionsNotMetException(
+                    "Невозможно удалить категорию, так как не удалось проверить наличие связанных событий. Повторите попытку позже."
+            );
         }
         try {
             categoryRepository.deleteById(catId);

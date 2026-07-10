@@ -60,7 +60,6 @@ public class EventServiceImpl implements EventService {
             throw new NotFoundException("Пользователь с id=" + userId + " не найден");
         }
 
-        // 3. Получаем категорию (fallback вернёт заглушку, но если её нет – исключение)
         CategoryDto category = categoryClient.getCategory(dto.getCategory());
         if (category == null || category.getId() == null) {
             throw new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена");

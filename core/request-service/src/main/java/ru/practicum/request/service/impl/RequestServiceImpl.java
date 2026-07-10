@@ -55,6 +55,11 @@ public class RequestServiceImpl implements RequestService {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
 
+        // Проверяем, что инициатор события присутствует
+        if (event.getInitiator() == null || event.getInitiator().getId() == null) {
+            throw new IllegalStateException("Инициатор события не заполнен");
+        }
+
         if (event.getInitiator().getId().equals(Long.valueOf(userId))) {
             throw new ConflictException("Инициатор не может подать заявку на своё событие");
         }
@@ -113,8 +118,11 @@ public class RequestServiceImpl implements RequestService {
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
         log.info("getEventRequests: userId={}, eventId={}", userId, eventId);
         EventFullDto event = eventClient.getEvent(eventId);
-        if (event == null) {
+        if (event == null || event.getId() == null) {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
+        }
+        if (event.getInitiator() == null || event.getInitiator().getId() == null) {
+            throw new IllegalStateException("Инициатор события не заполнен");
         }
         if (!event.getInitiator().getId().equals(userId)) {
             throw new ConditionsNotMetException("Пользователь не является инициатором события");
@@ -130,8 +138,11 @@ public class RequestServiceImpl implements RequestService {
                                                                     EventRequestStatusUpdateRequest updateRequest) {
         log.info("updateEventRequestsStatus: userId={}, eventId={}", userId, eventId);
         EventFullDto event = eventClient.getEvent(eventId);
-        if (event == null) {
+        if (event == null || event.getId() == null) {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
+        }
+        if (event.getInitiator() == null || event.getInitiator().getId() == null) {
+            throw new IllegalStateException("Инициатор события не заполнен");
         }
         if (!event.getInitiator().getId().equals(userId)) {
             throw new ConditionsNotMetException("Пользователь не является инициатором события");
@@ -164,7 +175,7 @@ public class RequestServiceImpl implements RequestService {
     public EventRequestStatusUpdateResult updateRequestsStatusInternal(Long eventId,
                                                                        EventRequestStatusUpdateRequest request) {
         EventFullDto event = eventClient.getEvent(eventId);
-        if (event == null) {
+        if (event == null || event.getId() == null) {
             throw new NotFoundException("Событие не найдено");
         }
         return updateRequestsInternal(eventId, request, event);

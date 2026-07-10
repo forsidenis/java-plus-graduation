@@ -16,6 +16,9 @@ spring:
         useRandomPolicy: true
         max-interval: 6000
 
+    loadbalancer:
+      enabled: true
+
 eureka:
   client:
     serviceUrl:
