@@ -206,8 +206,7 @@ public class EventServiceImpl implements EventService {
         if (rangeStart == null) {
             rangeStart = LocalDateTime.now();
         }
-        Sort sortBy = (sort != null && sort.equals("VIEWS")) ? Sort.by(Sort.Direction.DESC, "id") : Sort.by(Sort.Direction.ASC, "eventDate");
-        Pageable pageable = PageRequest.of(from / size, size, sortBy);
+        Pageable pageable = PageRequest.of(from / size, size);
         List<Event> events = eventRepository.findPublicEvents(text, categories, paid, rangeStart, rangeEnd, pageable);
         if (Boolean.TRUE.equals(onlyAvailable)) {
             events = events.stream()
@@ -221,6 +220,8 @@ public class EventServiceImpl implements EventService {
         List<EventShortDto> result = enrichEventsWithStats(events, true);
         if (sort != null && sort.equals("VIEWS")) {
             result.sort((a, b) -> Long.compare(b.getViews(), a.getViews()));
+        } else {
+            result.sort((a, b) -> a.getEventDate().compareTo(b.getEventDate()));
         }
         saveHit(request);
         return result;

@@ -128,6 +128,7 @@ public class RequestServiceImpl implements RequestService {
                     throw new ConflictException("Повторная заявка не допускается");
                 });
 
+        // Проверка лимита перед созданием
         int participantLimit = event.getParticipantLimit() != null ? event.getParticipantLimit() : 0;
         if (participantLimit > 0) {
             long confirmed = requestRepository.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
@@ -140,11 +141,10 @@ public class RequestServiceImpl implements RequestService {
         request.setCreated(LocalDateTime.now());
         request.setEventId(Long.valueOf(eventId));
         request.setRequesterId(Long.valueOf(userId));
-        request.setStatus(RequestStatus.PENDING);
-
-        boolean moderation = event.getRequestModeration() != null ? event.getRequestModeration() : true;
-        if (!moderation || participantLimit == 0) {
+        if (participantLimit == 0) {
             request.setStatus(RequestStatus.CONFIRMED);
+        } else {
+            request.setStatus(RequestStatus.PENDING);
         }
 
         request = requestRepository.save(request);
@@ -255,18 +255,20 @@ public class RequestServiceImpl implements RequestService {
         List<ParticipationRequest> confirmed = new ArrayList<>();
         List<ParticipationRequest> rejected = new ArrayList<>();
 
+        int participantLimit = event.getParticipantLimit() != null ? event.getParticipantLimit() : 0;
+
         if (newStatus == RequestStatus.CONFIRMED) {
             long confirmedCount = requestRepository.countByEventIdAndStatus(eventId.intValue(), RequestStatus.CONFIRMED);
-            long limit = event.getParticipantLimit() != null ? event.getParticipantLimit() : 0;
             for (ParticipationRequest req : requests) {
                 if (req.getStatus() != RequestStatus.PENDING) {
                     throw new ConditionsNotMetException("Заявка не в статусе PENDING");
                 }
-                if (limit == 0 || confirmedCount < limit) {
+                if (participantLimit == 0 || confirmedCount < participantLimit) {
                     req.setStatus(RequestStatus.CONFIRMED);
                     confirmed.add(req);
                     confirmedCount++;
                 } else {
+                    // Если лимит достигнут, отклоняем все оставшиеся заявки
                     req.setStatus(RequestStatus.REJECTED);
                     rejected.add(req);
                     throw new ConflictException("Достигнут лимит участников события");
