@@ -82,6 +82,7 @@ public class CategoryServiceImpl implements CategoryService {
                 );
             }
         } catch (FeignException e) {
+            log.error("Event service unavailable while checking events for category {}", catId);
             throw e;
         } catch (Exception e) {
             log.error("Ошибка при проверке событий для категории {}: {}", catId, e.getMessage());

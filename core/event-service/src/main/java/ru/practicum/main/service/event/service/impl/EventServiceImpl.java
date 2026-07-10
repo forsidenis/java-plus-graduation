@@ -42,8 +42,6 @@ public class EventServiceImpl implements EventService {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
-    // ----- Основные публичные методы -----
-
     @Override
     @Transactional
     public EventFullDto createEvent(Long userId, NewEventDto dto) {
@@ -105,12 +103,12 @@ public class EventServiceImpl implements EventService {
         log.info("updateUserEvent: userId={}, eventId={}", userId, eventId);
         Event event = findEventByIdAndInitiator(eventId, userId);
 
-        if (dto.getEventDate() != null && dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
-        }
-
         if (event.getState() != EventState.CANCELED && event.getState() != EventState.PENDING) {
             throw new ConflictException("Изменять можно только события в статусе PENDING или CANCELED");
+        }
+
+        if (dto.getEventDate() != null && dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+            throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
 
         Long categoryId = null;
@@ -232,7 +230,6 @@ public class EventServiceImpl implements EventService {
         log.info("updateAdminEvent: eventId={}", eventId);
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено"));
-
 
         Long categoryId = null;
         if (dto.getCategory() != null) {
