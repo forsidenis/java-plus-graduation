@@ -1,4 +1,4 @@
-package ru.practicum.main.service.event.client;
+package ru.practicum.request.client;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

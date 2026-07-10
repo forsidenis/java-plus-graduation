@@ -1,4 +1,4 @@
-package ru.practicum.rating.client;
+package ru.practicum.request.client;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;

@@ -16,7 +16,6 @@ spring:
         useRandomPolicy: true
         max-interval: 6000
 
-
 eureka:
   client:
     serviceUrl:
@@ -26,3 +25,7 @@ eureka:
     hostname: localhost
     instance-id: ${spring.application.name}:${random.value}
     leaseRenewalIntervalInSeconds: 10
+
+feign:
+  circuitbreaker:
+    enabled: true

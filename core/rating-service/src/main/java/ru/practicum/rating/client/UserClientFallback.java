@@ -1,4 +1,4 @@
-package ru.practicum.main.service.event.client;
+package ru.practicum.rating.client;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

@@ -40,41 +40,56 @@ public class StatsClient {
     }
 
     public EndpointHitDto hit(EndpointHitDto hit) {
-        String baseUrl = getServiceUrl();
-        return restClient.post()
-                .uri(baseUrl + "/hit")
-                .body(hit)
-                .retrieve()
-                .body(EndpointHitDto.class);
+        try {
+            String baseUrl = getServiceUrl();
+            return restClient.post()
+                    .uri(baseUrl + "/hit")
+                    .body(hit)
+                    .retrieve()
+                    .body(EndpointHitDto.class);
+        } catch (Exception e) {
+            log.warn("StatsClient hit failed: {}", e.getMessage());
+            return hit;
+        }
     }
 
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end,
                                        List<String> uris, Boolean unique) {
-        String baseUrl = getServiceUrl();
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + "/stats")
-                .queryParam("start", start.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
-                .queryParam("end", end.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
-                .queryParam("unique", unique);
+        try {
+            String baseUrl = getServiceUrl();
+            UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + "/stats")
+                    .queryParam("start", start.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                    .queryParam("end", end.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
+                    .queryParam("unique", unique);
 
-        if (uris != null && !uris.isEmpty()) {
-            builder.queryParam("uris", String.join(",", uris));
+            if (uris != null && !uris.isEmpty()) {
+                builder.queryParam("uris", String.join(",", uris));
+            }
+
+            String uriString = builder.build().toUriString();
+
+            ViewStatsDto[] response = restClient.get()
+                    .uri(uriString)
+                    .retrieve()
+                    .body(ViewStatsDto[].class);
+
+            return response != null ? Arrays.asList(response) : Collections.emptyList();
+        } catch (Exception e) {
+            log.warn("StatsClient getStats failed: {}", e.getMessage());
+            return Collections.emptyList();
         }
-
-        String uriString = builder.build().toUriString();
-
-        ViewStatsDto[] response = restClient.get()
-                .uri(uriString)
-                .retrieve()
-                .body(ViewStatsDto[].class);
-
-        return response != null ? Arrays.asList(response) : Collections.emptyList();
     }
 
     private String getServiceUrl() {
-        ServiceInstance instance = loadBalancerClient.choose(serviceId);
-        if (instance == null) {
-            throw new IllegalStateException("Нет доступных экземпляров сервиса " + serviceId);
+        try {
+            ServiceInstance instance = loadBalancerClient.choose(serviceId);
+            if (instance == null) {
+                throw new IllegalStateException("Нет доступных экземпляров сервиса " + serviceId);
+            }
+            return instance.getUri().toString();
+        } catch (Exception e) {
+            log.error("Не удалось получить URL для stats-server: {}", e.getMessage());
+            throw new IllegalStateException("Stats server unavailable", e);
         }
-        return instance.getUri().toString();
     }
 }

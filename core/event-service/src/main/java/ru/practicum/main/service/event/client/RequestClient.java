@@ -8,7 +8,7 @@ import ru.practicum.common.dto.ParticipationRequestDto;
 
 import java.util.List;
 
-@FeignClient(name = "request-service")
+@FeignClient(name = "request-service", fallback = RequestClientFallback.class)
 public interface RequestClient {
 
     @GetMapping("/internal/requests/count/{eventId}")

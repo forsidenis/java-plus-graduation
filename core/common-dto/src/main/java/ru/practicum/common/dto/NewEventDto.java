@@ -23,7 +23,7 @@ public class NewEventDto {
     private String annotation;
 
     @NotNull
-    private Long category; // id категории
+    private Long category;
 
     @NotBlank
     @Size(min = 20, max = 7000)
@@ -36,14 +36,14 @@ public class NewEventDto {
     @NotNull
     private LocationDto location;
 
-    @Builder.Default  // Добавлено
+    @Builder.Default
     private Boolean paid = false;
 
     @PositiveOrZero
-    @Builder.Default  // Добавлено
+    @Builder.Default
     private Integer participantLimit = 0;
 
-    @Builder.Default  // Добавлено
+    @Builder.Default
     private Boolean requestModeration = true;
 
     @NotBlank
