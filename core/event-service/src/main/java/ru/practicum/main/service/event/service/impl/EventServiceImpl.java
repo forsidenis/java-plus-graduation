@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -48,8 +49,11 @@ public class EventServiceImpl implements EventService {
     private UserShortDto getUserFromService(Long userId) {
         try {
             return userClient.getUser(userId);
+        } catch (FeignException e) {
+            log.warn("Feign error getting user {}: {}", userId, e.getMessage());
+            return UserShortDto.builder().id(userId).name("dummy_user_" + userId).build();
         } catch (Exception e) {
-            log.warn("Не удалось получить пользователя из user-service: {}", e.getMessage());
+            log.warn("Error getting user {}: {}", userId, e.getMessage());
             return UserShortDto.builder().id(userId).name("dummy_user_" + userId).build();
         }
     }
@@ -57,8 +61,11 @@ public class EventServiceImpl implements EventService {
     private CategoryDto getCategoryFromService(Long catId) {
         try {
             return categoryClient.getCategory(catId);
+        } catch (FeignException e) {
+            log.warn("Feign error getting category {}: {}", catId, e.getMessage());
+            return CategoryDto.builder().id(catId).name("dummy_category_" + catId).build();
         } catch (Exception e) {
-            log.warn("Не удалось получить категорию из category-service: {}", e.getMessage());
+            log.warn("Error getting category {}: {}", catId, e.getMessage());
             return CategoryDto.builder().id(catId).name("dummy_category_" + catId).build();
         }
     }
@@ -67,12 +74,13 @@ public class EventServiceImpl implements EventService {
         try {
             return requestClient.countConfirmedRequests(eventId);
         } catch (FeignException e) {
-            if (e.status() == 404) {
+            if (e.status() == 404 || e.status() == 500) {
+                log.warn("Request service error for event {}: {}", eventId, e.getMessage());
                 return 0L;
             }
             throw e;
         } catch (Exception e) {
-            log.warn("Не удалось получить количество подтверждённых заявок: {}", e.getMessage());
+            log.warn("Error counting confirmed requests for event {}: {}", eventId, e.getMessage());
             return 0L;
         }
     }
@@ -81,7 +89,7 @@ public class EventServiceImpl implements EventService {
         try {
             return requestClient.existsByEventAndUserAndStatusConfirmed(eventId, userId);
         } catch (Exception e) {
-            log.warn("Не удалось проверить наличие заявки: {}", e.getMessage());
+            log.warn("Error checking request existence: {}", e.getMessage());
             return false;
         }
     }
@@ -90,7 +98,7 @@ public class EventServiceImpl implements EventService {
         try {
             return requestClient.getRequestsByEvent(eventId);
         } catch (Exception e) {
-            log.warn("Не удалось получить заявки события: {}", e.getMessage());
+            log.warn("Error getting requests for event {}: {}", eventId, e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -109,7 +117,14 @@ public class EventServiceImpl implements EventService {
             if (e.status() == 409) {
                 throw new ConflictException("Достигнут лимит участников события");
             }
-            throw e;
+            if (e.status() == 404) {
+                throw new NotFoundException("Событие или заявка не найдены");
+            }
+            log.error("Feign error updating request status: {}", e.getMessage());
+            throw new RuntimeException("Ошибка при обновлении статуса заявок");
+        } catch (Exception e) {
+            log.error("Error updating request status: {}", e.getMessage());
+            throw new RuntimeException("Ошибка при обновлении статуса заявок");
         }
     }
 

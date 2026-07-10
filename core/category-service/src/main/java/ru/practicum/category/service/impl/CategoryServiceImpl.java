@@ -81,7 +81,6 @@ public class CategoryServiceImpl implements CategoryService {
             throw new NotFoundException("Категория с id=" + catId + " не найдена");
         }
 
-        // Проверяем, есть ли события, привязанные к этой категории
         Long eventsCount = eventClient.countEventsByCategory(catId);
         if (eventsCount > 0) {
             throw new ConditionsNotMetException(

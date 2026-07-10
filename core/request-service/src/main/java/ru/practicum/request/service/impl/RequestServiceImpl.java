@@ -46,8 +46,7 @@ public class RequestServiceImpl implements RequestService {
         try {
             String url = getServiceUrl("user-service") + "/internal/users/" + userId;
             ResponseEntity<UserShortDto> response = restTemplate.exchange(
-                    url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {
-                    }
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<UserShortDto>() {}
             );
             return response.getBody();
         } catch (Exception e) {
@@ -60,16 +59,12 @@ public class RequestServiceImpl implements RequestService {
         try {
             String url = getServiceUrl("event-service") + "/internal/events/" + eventId;
             ResponseEntity<EventFullDto> response = restTemplate.exchange(
-                    url, HttpMethod.GET, null, new ParameterizedTypeReference<EventFullDto>() {
-                    }
+                    url, HttpMethod.GET, null, new ParameterizedTypeReference<EventFullDto>() {}
             );
             EventFullDto event = response.getBody();
             if (event != null && event.getInitiator() == null) {
-                UserShortDto dummy = getUserFromService(event.getInitiator().getId());
-                event.setInitiator(dummy != null ? dummy : UserShortDto.builder()
-                        .id(1L)
-                        .name("dummy_initiator")
-                        .build());
+                UserShortDto dummy = getUserFromService(1L);
+                event.setInitiator(dummy != null ? dummy : UserShortDto.builder().id(1L).name("dummy_initiator").build());
             }
             return event;
         } catch (Exception e) {
@@ -129,7 +124,6 @@ public class RequestServiceImpl implements RequestService {
                 });
 
         int participantLimit = event.getParticipantLimit() != null ? event.getParticipantLimit() : 0;
-        // Проверка лимита по подтверждённым заявкам
         if (participantLimit > 0) {
             long confirmed = requestRepository.countByEventIdAndStatus(Long.valueOf(eventId), RequestStatus.CONFIRMED);
             if (confirmed >= participantLimit) {
@@ -220,7 +214,8 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public boolean existsByEventAndUserAndStatusConfirmed(Long eventId, Long userId) {
-        return requestRepository.existsByEventIdAndRequesterIdAndStatus(eventId, userId, RequestStatus.CONFIRMED);
+        return requestRepository.existsByEventIdAndRequesterIdAndStatus(
+                eventId.intValue(), userId.intValue(), RequestStatus.CONFIRMED);
     }
 
     @Override
@@ -271,7 +266,6 @@ public class RequestServiceImpl implements RequestService {
                 } else {
                     req.setStatus(RequestStatus.REJECTED);
                     rejected.add(req);
-                    requestRepository.saveAll(requests);
                     throw new ConflictException("Достигнут лимит участников события");
                 }
             }
