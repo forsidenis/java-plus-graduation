@@ -49,7 +49,7 @@ public class EventServiceImpl implements EventService {
         if (dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
             throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
-        
+
         UserShortDto user = userClient.getUser(userId);
         CategoryDto category = categoryClient.getCategory(dto.getCategory());
 
@@ -91,18 +91,7 @@ public class EventServiceImpl implements EventService {
             throw new ConflictException("Изменять можно только события в статусе PENDING или CANCELED");
         }
 
-        if (dto.getEventDate() != null && dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
-            throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
-        }
-
-        Long categoryId = null;
-        if (dto.getCategory() != null) {
-            categoryClient.getCategory(dto.getCategory()); // проверка существования (заглушка)
-            categoryId = dto.getCategory();
-        }
-
-        EventMapper.updateEventFromUserRequest(event, dto, categoryId);
-
+        // Обрабатываем stateAction до обновления полей
         if (dto.getStateAction() != null) {
             switch (dto.getStateAction()) {
                 case "SEND_TO_REVIEW":
@@ -115,6 +104,19 @@ public class EventServiceImpl implements EventService {
                     throw new IllegalArgumentException("Некорректное действие: " + dto.getStateAction());
             }
         }
+
+        // Проверяем дату до обновления полей
+        if (dto.getEventDate() != null && dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
+            throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
+        }
+
+        Long categoryId = null;
+        if (dto.getCategory() != null) {
+            categoryClient.getCategory(dto.getCategory()); // проверка существования
+            categoryId = dto.getCategory();
+        }
+
+        EventMapper.updateEventFromUserRequest(event, dto, categoryId);
 
         event = eventRepository.save(event);
 
@@ -200,14 +202,6 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено"));
 
-        Long categoryId = null;
-        if (dto.getCategory() != null) {
-            categoryClient.getCategory(dto.getCategory());
-            categoryId = dto.getCategory();
-        }
-
-        EventMapper.updateEventFromAdminRequest(event, dto, categoryId);
-
         if (dto.getStateAction() != null) {
             switch (dto.getStateAction()) {
                 case "PUBLISH_EVENT":
@@ -230,6 +224,14 @@ public class EventServiceImpl implements EventService {
                     throw new IllegalArgumentException("Некорректное действие: " + dto.getStateAction());
             }
         }
+
+        Long categoryId = null;
+        if (dto.getCategory() != null) {
+            categoryClient.getCategory(dto.getCategory());
+            categoryId = dto.getCategory();
+        }
+
+        EventMapper.updateEventFromAdminRequest(event, dto, categoryId);
 
         event = eventRepository.save(event);
 
