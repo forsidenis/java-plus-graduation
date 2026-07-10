@@ -1,5 +1,6 @@
 package ru.practicum.request.service.impl;
 
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -34,7 +35,11 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public List<ParticipationRequestDto> getUserRequests(Integer userId) {
         log.info("getUserRequests: userId={}", userId);
-        userClient.getUser(Long.valueOf(userId));
+        try {
+            userClient.getUser(Long.valueOf(userId));
+        } catch (FeignException e) {
+            throw new NotFoundException("Пользователь не найден или сервис недоступен");
+        }
         return requestRepository.findAllByRequesterId(userId).stream()
                 .map(RequestMapper::toDto)
                 .collect(Collectors.toList());
@@ -45,12 +50,22 @@ public class RequestServiceImpl implements RequestService {
     public ParticipationRequestDto createRequest(Integer userId, Integer eventId) {
         log.info("createRequest: userId={}, eventId={}", userId, eventId);
 
-        UserShortDto user = userClient.getUser(Long.valueOf(userId));
+        UserShortDto user;
+        try {
+            user = userClient.getUser(Long.valueOf(userId));
+        } catch (FeignException e) {
+            throw new NotFoundException("Пользователь не найден или сервис недоступен");
+        }
         if (user == null || user.getId() == null) {
             throw new NotFoundException("Пользователь с id=" + userId + " не найден");
         }
 
-        EventFullDto event = eventClient.getEvent(Long.valueOf(eventId));
+        EventFullDto event;
+        try {
+            event = eventClient.getEvent(Long.valueOf(eventId));
+        } catch (FeignException e) {
+            throw new NotFoundException("Событие не найдено или сервис недоступен");
+        }
         if (event == null || event.getId() == null) {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
@@ -120,7 +135,12 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public List<ParticipationRequestDto> getEventRequests(Long userId, Long eventId) {
         log.info("getEventRequests: userId={}, eventId={}", userId, eventId);
-        EventFullDto event = eventClient.getEvent(eventId);
+        EventFullDto event;
+        try {
+            event = eventClient.getEvent(eventId);
+        } catch (FeignException e) {
+            throw new NotFoundException("Событие не найдено или сервис недоступен");
+        }
         if (event == null || event.getId() == null) {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
@@ -140,7 +160,12 @@ public class RequestServiceImpl implements RequestService {
     public EventRequestStatusUpdateResult updateEventRequestsStatus(Long userId, Long eventId,
                                                                     EventRequestStatusUpdateRequest updateRequest) {
         log.info("updateEventRequestsStatus: userId={}, eventId={}", userId, eventId);
-        EventFullDto event = eventClient.getEvent(eventId);
+        EventFullDto event;
+        try {
+            event = eventClient.getEvent(eventId);
+        } catch (FeignException e) {
+            throw new NotFoundException("Событие не найдено или сервис недоступен");
+        }
         if (event == null || event.getId() == null) {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
@@ -177,7 +202,12 @@ public class RequestServiceImpl implements RequestService {
     @Transactional
     public EventRequestStatusUpdateResult updateRequestsStatusInternal(Long eventId,
                                                                        EventRequestStatusUpdateRequest request) {
-        EventFullDto event = eventClient.getEvent(eventId);
+        EventFullDto event;
+        try {
+            event = eventClient.getEvent(eventId);
+        } catch (FeignException e) {
+            throw new NotFoundException("Событие не найдено или сервис недоступен");
+        }
         if (event == null || event.getId() == null) {
             throw new NotFoundException("Событие не найдено");
         }

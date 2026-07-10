@@ -386,12 +386,11 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toMap(
                         id -> id,
                         id -> {
-                            try {
-                                CategoryDto cat = categoryClient.getCategory(id);
-                                return (cat != null && cat.getId() != null) ? cat : CategoryDto.builder().id(id).name("dummy").build();
-                            } catch (Exception e) {
-                                return CategoryDto.builder().id(id).name("dummy").build();
+                            CategoryDto cat = categoryClient.getCategory(id);
+                            if (cat == null || cat.getId() == null) {
+                                throw new NotFoundException("Категория с id=" + id + " не найдена");
                             }
+                            return cat;
                         }
                 ));
 
@@ -401,23 +400,18 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toMap(
                         id -> id,
                         id -> {
-                            try {
-                                UserShortDto usr = userClient.getUser(id);
-                                return (usr != null && usr.getId() != null) ? usr : UserShortDto.builder().id(id).name("dummy").build();
-                            } catch (Exception e) {
-                                return UserShortDto.builder().id(id).name("dummy").build();
+                            UserShortDto usr = userClient.getUser(id);
+                            if (usr == null || usr.getId() == null) {
+                                throw new NotFoundException("Пользователь с id=" + id + " не найден");
                             }
+                            return usr;
                         }
                 ));
 
         Map<Long, Long> confirmedMap = events.stream()
                 .collect(Collectors.toMap(Event::getId, e -> {
-                    try {
-                        Long count = requestClient.countConfirmedRequests(e.getId());
-                        return count != null ? count : 0L;
-                    } catch (Exception e1) {
-                        return 0L;
-                    }
+                    Long count = requestClient.countConfirmedRequests(e.getId());
+                    return count != null ? count : 0L;
                 }));
 
         LocalDateTime earliest = events.stream()
@@ -445,12 +439,11 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toMap(
                         id -> id,
                         id -> {
-                            try {
-                                CategoryDto cat = categoryClient.getCategory(id);
-                                return (cat != null && cat.getId() != null) ? cat : CategoryDto.builder().id(id).name("dummy").build();
-                            } catch (Exception e) {
-                                return CategoryDto.builder().id(id).name("dummy").build();
+                            CategoryDto cat = categoryClient.getCategory(id);
+                            if (cat == null || cat.getId() == null) {
+                                throw new NotFoundException("Категория с id=" + id + " не найдена");
                             }
+                            return cat;
                         }
                 ));
 
@@ -460,23 +453,18 @@ public class EventServiceImpl implements EventService {
                 .collect(Collectors.toMap(
                         id -> id,
                         id -> {
-                            try {
-                                UserShortDto usr = userClient.getUser(id);
-                                return (usr != null && usr.getId() != null) ? usr : UserShortDto.builder().id(id).name("dummy").build();
-                            } catch (Exception e) {
-                                return UserShortDto.builder().id(id).name("dummy").build();
+                            UserShortDto usr = userClient.getUser(id);
+                            if (usr == null || usr.getId() == null) {
+                                throw new NotFoundException("Пользователь с id=" + id + " не найден");
                             }
+                            return usr;
                         }
                 ));
 
         Map<Long, Long> confirmedMap = events.stream()
                 .collect(Collectors.toMap(Event::getId, e -> {
-                    try {
-                        Long count = requestClient.countConfirmedRequests(e.getId());
-                        return count != null ? count : 0L;
-                    } catch (Exception e1) {
-                        return 0L;
-                    }
+                    Long count = requestClient.countConfirmedRequests(e.getId());
+                    return count != null ? count : 0L;
                 }));
 
         LocalDateTime earliest = events.stream()
