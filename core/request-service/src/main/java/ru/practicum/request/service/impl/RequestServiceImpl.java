@@ -2,6 +2,7 @@ package ru.practicum.request.service.impl;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.common.dto.*;
@@ -33,7 +34,6 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public List<ParticipationRequestDto> getUserRequests(Integer userId) {
         log.info("getUserRequests: userId={}", userId);
-        // проверяем существование пользователя через клиент (fallback вернёт заглушку)
         userClient.getUser(Long.valueOf(userId));
         return requestRepository.findAllByRequesterId(userId).stream()
                 .map(RequestMapper::toDto)
@@ -55,7 +55,6 @@ public class RequestServiceImpl implements RequestService {
             throw new NotFoundException("Событие с id=" + eventId + " не найдено");
         }
 
-        // Проверяем, что инициатор события присутствует
         if (event.getInitiator() == null || event.getInitiator().getId() == null) {
             throw new IllegalStateException("Инициатор события не заполнен");
         }
@@ -93,7 +92,11 @@ public class RequestServiceImpl implements RequestService {
             request.setStatus(RequestStatus.PENDING);
         }
 
-        request = requestRepository.save(request);
+        try {
+            request = requestRepository.save(request);
+        } catch (DataIntegrityViolationException e) {
+            throw new ConflictException("Повторная заявка не допускается");
+        }
         log.info("Заявка создана с id={}, статус={}", request.getId(), request.getStatus());
         return RequestMapper.toDto(request);
     }

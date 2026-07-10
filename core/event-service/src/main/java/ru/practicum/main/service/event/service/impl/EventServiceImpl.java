@@ -48,18 +48,15 @@ public class EventServiceImpl implements EventService {
     @Transactional
     public EventFullDto createEvent(Long userId, NewEventDto dto) {
         log.info("createEvent: userId={}", userId);
-        // Проверяем дату
         if (dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
             throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
 
-        // Получаем и проверяем пользователя
         UserShortDto user = userClient.getUser(userId);
         if (user == null || user.getId() == null) {
             throw new NotFoundException("Пользователь с id=" + userId + " не найден");
         }
 
-        // Получаем и проверяем категорию
         CategoryDto category = categoryClient.getCategory(dto.getCategory());
         if (category == null || category.getId() == null) {
             throw new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена");
@@ -73,7 +70,6 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventShortDto> getUserEvents(Long userId, int from, int size) {
         log.info("getUserEvents: userId={}", userId);
-        // Проверяем пользователя
         UserShortDto user = userClient.getUser(userId);
         if (user == null || user.getId() == null) {
             throw new NotFoundException("Пользователь с id=" + userId + " не найден");
@@ -109,7 +105,6 @@ public class EventServiceImpl implements EventService {
         log.info("updateUserEvent: userId={}, eventId={}", userId, eventId);
         Event event = findEventByIdAndInitiator(eventId, userId);
 
-        // Проверка даты
         if (dto.getEventDate() != null && dto.getEventDate().isBefore(LocalDateTime.now().plusHours(2))) {
             throw new IllegalArgumentException("Дата события должна быть не ранее чем через 2 часа от текущего момента");
         }
@@ -144,7 +139,6 @@ public class EventServiceImpl implements EventService {
 
         event = eventRepository.save(event);
 
-        // Проверяем пользователя и категорию после сохранения
         UserShortDto user = userClient.getUser(userId);
         if (user == null || user.getId() == null) {
             throw new NotFoundException("Пользователь с id=" + userId + " не найден");
@@ -239,10 +233,6 @@ public class EventServiceImpl implements EventService {
         Event event = eventRepository.findById(eventId)
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено"));
 
-        // Проверка даты (если передана)
-        if (dto.getEventDate() != null && dto.getEventDate().isBefore(LocalDateTime.now().plusHours(1))) {
-            throw new IllegalArgumentException("Дата события должна быть не ранее чем через 1 час после публикации");
-        }
 
         Long categoryId = null;
         if (dto.getCategory() != null) {
@@ -393,7 +383,6 @@ public class EventServiceImpl implements EventService {
     private List<EventShortDto> enrichEventsWithStats(List<Event> events, boolean onlyPublished) {
         if (events.isEmpty()) return Collections.emptyList();
 
-        // Получаем категории и пользователей через fallback-клиенты (они вернут заглушки при ошибках)
         Map<Long, CategoryDto> categoryMap = events.stream()
                 .map(Event::getCategoryId)
                 .distinct()

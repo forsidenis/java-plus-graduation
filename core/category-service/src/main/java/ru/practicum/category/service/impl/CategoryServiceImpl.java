@@ -1,5 +1,6 @@
 package ru.practicum.category.service.impl;
 
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -80,6 +81,8 @@ public class CategoryServiceImpl implements CategoryService {
                         "Невозможно удалить категорию с id=" + catId + ", так как она связана с существующими событиями"
                 );
             }
+        } catch (FeignException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Ошибка при проверке событий для категории {}: {}", catId, e.getMessage());
             throw new ConditionsNotMetException(

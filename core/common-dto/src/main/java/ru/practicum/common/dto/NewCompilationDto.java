@@ -1,5 +1,6 @@
 package ru.practicum.common.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
@@ -19,7 +20,7 @@ public class NewCompilationDto {
     @Size(min = 1, max = 50, message = "Длина заголовка должна быть от 1 до 50 символов")
     private String title;
 
-    @Builder.Default
+    @JsonProperty(defaultValue = "false")
     private Boolean pinned = false;
 
     private List<Long> events;
