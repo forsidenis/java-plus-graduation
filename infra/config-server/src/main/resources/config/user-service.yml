@@ -1,13 +1,13 @@
 server:
-  port: 0
+  port: ${SERVER_PORT:0}
 
 spring:
   application:
-    name: event-service
+    name: user-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/ewm-main
-    username: main
-    password: main
+    url: jdbc:postgresql://user-db:5432/user-service
+    username: user
+    password: user
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -16,21 +16,6 @@ spring:
     properties:
       hibernate:
         format_sql: false
-  cloud:
-    loadbalancer:
-      enabled: true
-
-feign:
-  circuitbreaker:
-    enabled: true
-  httpclient:
-    enabled: true
-  client:
-    config:
-      default:
-        connectTimeout: 5000
-        readTimeout: 5000
-        loggerLevel: basic
 
 eureka:
   client:
@@ -38,6 +23,12 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
     fetch-registry: true
     register-with-eureka: true
+  instance:
+    preferIpAddress: true
+    hostname: localhost
+    instance-id: ${spring.application.name}:${server.port}
+    nonSecurePort: ${server.port}
+    leaseRenewalIntervalInSeconds: 10
 
 management:
   endpoints:

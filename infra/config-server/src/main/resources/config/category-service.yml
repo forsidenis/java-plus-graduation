@@ -1,13 +1,13 @@
 server:
-  port: 0
+  port: ${SERVER_PORT:0}
 
 spring:
   application:
-    name: rating-service
+    name: category-service
   datasource:
-    url: jdbc:postgresql://localhost:5450/rating-service
-    username: rating
-    password: rating
+    url: jdbc:postgresql://category-db:5432/category-service
+    username: category
+    password: category
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -20,24 +20,18 @@ spring:
     loadbalancer:
       enabled: true
 
-feign:
-  circuitbreaker:
-    enabled: true
-  httpclient:
-    enabled: true
-  client:
-    config:
-      default:
-        connectTimeout: 5000
-        readTimeout: 5000
-        loggerLevel: basic
-
 eureka:
   client:
     serviceUrl:
       defaultZone: http://localhost:8761/eureka/
     fetch-registry: true
     register-with-eureka: true
+  instance:
+    preferIpAddress: true
+    hostname: localhost
+    instance-id: ${spring.application.name}:${server.port}
+    nonSecurePort: ${server.port}
+    leaseRenewalIntervalInSeconds: 10
 
 management:
   endpoints:
@@ -53,3 +47,7 @@ logging:
     ru.practicum: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level --- [%thread] %logger{36} : %msg%n"
+
+feign:
+  circuitbreaker:
+    enabled: true

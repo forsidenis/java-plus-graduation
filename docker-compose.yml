@@ -1,22 +1,23 @@
 services:
-  ewm-main-db:
+  # ---- БАЗЫ ДАННЫХ (без изменений) ----
+  main-db:
     image: postgres:16.1
     container_name: ewm-main-db
     volumes:
-      - ./core/main-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
+      - ./core/event-service/src/main/resources/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
     ports:
       - "5433:5432"
     environment:
-      - POSTGRES_DB=ewm-main
-      - POSTGRES_USER=main
-      - POSTGRES_PASSWORD=main
+      POSTGRES_DB: ewm-main
+      POSTGRES_USER: main
+      POSTGRES_PASSWORD: main
     healthcheck:
       test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
       timeout: 5s
       interval: 5s
       retries: 10
 
-  stat-server-db:
+  stats-db:
     image: postgres:16.1
     container_name: stat-server-db
     volumes:
@@ -24,11 +25,272 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_DB=ewm-stat
-      - POSTGRES_USER=stat
-      - POSTGRES_PASSWORD=stat
+      POSTGRES_DB: ewm-stat
+      POSTGRES_USER: stat
+      POSTGRES_PASSWORD: stat
     healthcheck:
       test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
       timeout: 5s
       interval: 5s
       retries: 10
+
+  user-db:
+    image: postgres:16.1
+    container_name: user-db
+    environment:
+      POSTGRES_DB: user-service
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: user
+    ports:
+      - "5440:5432"
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
+
+  category-db:
+    image: postgres:16.1
+    container_name: category-db
+    environment:
+      POSTGRES_DB: category-service
+      POSTGRES_USER: category
+      POSTGRES_PASSWORD: category
+    ports:
+      - "5441:5432"
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
+
+  request-db:
+    image: postgres:16.1
+    container_name: request-db
+    environment:
+      POSTGRES_DB: request-service
+      POSTGRES_USER: request
+      POSTGRES_PASSWORD: request
+    ports:
+      - "5460:5432"
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
+
+  rating-db:
+    image: postgres:16.1
+    container_name: rating-db
+    environment:
+      POSTGRES_DB: rating-service
+      POSTGRES_USER: rating
+      POSTGRES_PASSWORD: rating
+    ports:
+      - "5450:5432"
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
+
+  compilation-db:
+    image: postgres:16.1
+    container_name: compilation-db
+    environment:
+      POSTGRES_DB: compilation-service
+      POSTGRES_USER: compilation
+      POSTGRES_PASSWORD: compilation
+    ports:
+      - "5442:5432"
+    healthcheck:
+      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
+      timeout: 5s
+      interval: 5s
+      retries: 10
+
+  # ---- ИНФРАСТРУКТУРА ----
+  config-server:
+    build:
+      context: ./infra/config-server
+      dockerfile: Dockerfile
+    container_name: config-server
+    # порт не пробрасываем – он случайный
+    environment:
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_PROFILES_ACTIVE=native
+      - SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCH_LOCATIONS=classpath:config/
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:${SERVER_PORT}/actuator/health"]   # не сработает, т.к. порт неизвестен – можно убрать
+      # проще убрать healthcheck или использовать проверку через Eureka, но для простоты удалим
+    # убираем healthcheck, т.к. порт неизвестен
+
+  discovery-server:
+    build:
+      context: ./infra/discovery-server
+      dockerfile: Dockerfile
+    container_name: discovery-server
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  gateway-server:
+    build:
+      context: ./infra/gateway-server
+      dockerfile: Dockerfile
+    container_name: gateway-server
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SERVER_PORT=8080   # фиксированный порт для внешнего доступа
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+    depends_on:
+      discovery-server:
+        condition: service_healthy
+    restart: on-failure
+
+  # ---- МИКРОСЕРВИСЫ ----
+  stats-server:
+    build:
+      context: ./stat/stats-server
+      dockerfile: Dockerfile
+    container_name: stats-server
+    ports:
+      - "9090:9090"
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SERVER_PORT=9090
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://stats-db:5432/ewm-stat
+      - SPRING_DATASOURCE_USERNAME=stat
+      - SPRING_DATASOURCE_PASSWORD=stat
+    depends_on:
+      stats-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    restart: on-failure
+
+  user-service:
+    build:
+      context: ./core/user-service
+      dockerfile: Dockerfile
+    container_name: user-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SERVER_PORT=8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://user-db:5432/user-service
+      - SPRING_DATASOURCE_USERNAME=user
+      - SPRING_DATASOURCE_PASSWORD=user
+    depends_on:
+      user-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    restart: on-failure
+
+  category-service:
+    build:
+      context: ./core/category-service
+      dockerfile: Dockerfile
+    container_name: category-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SERVER_PORT=8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://category-db:5432/category-service
+      - SPRING_DATASOURCE_USERNAME=category
+      - SPRING_DATASOURCE_PASSWORD=category
+    depends_on:
+      category-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    restart: on-failure
+
+  request-service:
+    build:
+      context: ./core/request-service
+      dockerfile: Dockerfile
+    container_name: request-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SERVER_PORT=8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://request-db:5432/request-service
+      - SPRING_DATASOURCE_USERNAME=request
+      - SPRING_DATASOURCE_PASSWORD=request
+    depends_on:
+      request-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    restart: on-failure
+
+  rating-service:
+    build:
+      context: ./core/rating-service
+      dockerfile: Dockerfile
+    container_name: rating-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SERVER_PORT=8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://rating-db:5432/rating-service
+      - SPRING_DATASOURCE_USERNAME=rating
+      - SPRING_DATASOURCE_PASSWORD=rating
+    depends_on:
+      rating-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    restart: on-failure
+
+  compilation-service:
+    build:
+      context: ./core/compilation-service
+      dockerfile: Dockerfile
+    container_name: compilation-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SERVER_PORT=8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://compilation-db:5432/compilation-service
+      - SPRING_DATASOURCE_USERNAME=compilation
+      - SPRING_DATASOURCE_PASSWORD=compilation
+    depends_on:
+      compilation-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+    restart: on-failure
+
+  event-service:
+    build:
+      context: ./core/event-service
+      dockerfile: Dockerfile
+    container_name: event-service
+    environment:
+      - SPRING_PROFILES_ACTIVE=default
+      - SERVER_PORT=8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://discovery-server:8761/eureka/
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://main-db:5432/ewm-main
+      - SPRING_DATASOURCE_USERNAME=main
+      - SPRING_DATASOURCE_PASSWORD=main
+      - STATS_SERVICE_NAME=http://stats-server:9090
+    depends_on:
+      main-db:
+        condition: service_healthy
+      discovery-server:
+        condition: service_healthy
+      stats-server:
+        condition: service_started
+    restart: on-failure

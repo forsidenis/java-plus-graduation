@@ -5,6 +5,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.practicum.common.dto.EventRequestStatusUpdateRequest;
 import ru.practicum.common.dto.EventRequestStatusUpdateResult;
 import ru.practicum.common.dto.ParticipationRequestDto;
+import ru.practicum.common.dto.RequestStatus;
 import ru.practicum.request.service.RequestService;
 
 import java.util.List;
@@ -35,5 +36,12 @@ public class InternalRequestController {
     public EventRequestStatusUpdateResult updateRequestsStatus(@PathVariable Long eventId,
                                                                @RequestBody EventRequestStatusUpdateRequest request) {
         return requestService.updateRequestsStatusInternal(eventId, request);
+    }
+
+    @GetMapping("/all-with-status")
+    public List<ParticipationRequestDto> getAllByEventIdInAndStatus(
+            @RequestParam("eventIds") List<Long> eventIds,
+            @RequestParam("status") RequestStatus status) {
+        return requestService.getAllByEventIdInAndStatus(eventIds, status);
     }
 }

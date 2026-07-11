@@ -10,7 +10,13 @@ spring:
         locator:
           enabled: true
       routes:
-        # ===== МАРШРУТЫ ДЛЯ REQUEST-SERVICE (специфичные должны идти первыми) =====
+        - id: request-service-all-with-status
+          uri: lb://request-service
+          predicates:
+            - Path=/users/{userId}/requests/allWithStatus/list
+          filters:
+            - StripPrefix=0
+
         - id: request-service-private-events
           uri: lb://request-service
           predicates:
@@ -25,14 +31,6 @@ spring:
           filters:
             - StripPrefix=0
 
-        - id: request-service-all-with-status
-          uri: lb://request-service
-          predicates:
-            - Path=/users/{userId}/requests/allWithStatus/list
-          filters:
-            - StripPrefix=0
-
-        # ===== МАРШРУТЫ ДЛЯ EVENT-SERVICE =====
         - id: event-service-private
           uri: lb://event-service
           predicates:
@@ -54,7 +52,6 @@ spring:
           filters:
             - StripPrefix=0
 
-        # ===== МАРШРУТЫ ДЛЯ CATEGORY-SERVICE =====
         - id: category-service-admin
           uri: lb://category-service
           predicates:
@@ -69,7 +66,6 @@ spring:
           filters:
             - StripPrefix=0
 
-        # ===== МАРШРУТЫ ДЛЯ COMPILATION-SERVICE =====
         - id: compilation-service-admin
           uri: lb://compilation-service
           predicates:
@@ -84,7 +80,6 @@ spring:
           filters:
             - StripPrefix=0
 
-        # ===== МАРШРУТЫ ДЛЯ USER-SERVICE =====
         - id: user-service-admin
           uri: lb://user-service
           predicates:
@@ -92,7 +87,6 @@ spring:
           filters:
             - StripPrefix=0
 
-        # ===== МАРШРУТЫ ДЛЯ RATING-SERVICE =====
         - id: rating-service-private
           uri: lb://rating-service
           predicates:
@@ -107,32 +101,25 @@ spring:
           filters:
             - StripPrefix=0
 
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
-    fetch-registry: true
-    register-with-eureka: true
+        - id: stats-server-hit
+          uri: lb://stats-server
+          predicates:
+            - Path=/hit
+          filters:
+            - StripPrefix=0
+
+        - id: stats-server-stats
+          uri: lb://stats-server
+          predicates:
+            - Path=/stats
+          filters:
+            - StripPrefix=0
 
 management:
   endpoints:
     web:
       exposure:
         include: gateway,health,info
-      base-path: /actuator
   endpoint:
     gateway:
       enabled: true
-    health:
-      show-details: always
-  info:
-    env:
-      enabled: true
-
-logging:
-  level:
-    com.netflix.discovery: DEBUG
-    org.springframework.cloud.gateway: TRACE
-    org.springframework.cloud.gateway.handler: DEBUG
-    org.springframework.cloud.gateway.route: DEBUG
-    org.springframework.web.reactive: DEBUG

@@ -61,7 +61,7 @@ public class EventServiceImpl implements EventService {
     @Override
     public List<EventShortDto> getUserEvents(Long userId, int from, int size) {
         log.info("getUserEvents: userId={}", userId);
-        userClient.getUser(userId); // заглушка гарантирует наличие объекта
+        userClient.getUser(userId);
 
         Pageable pageable = PageRequest.of(from / size, size);
         List<Event> events = eventRepository.findAllByInitiatorId(userId, pageable);
@@ -112,7 +112,7 @@ public class EventServiceImpl implements EventService {
 
         Long categoryId = null;
         if (dto.getCategory() != null) {
-            categoryClient.getCategory(dto.getCategory()); // проверка существования
+            categoryClient.getCategory(dto.getCategory());
             categoryId = dto.getCategory();
         }
 

@@ -1,13 +1,13 @@
 server:
-  port: 0
+  port: ${SERVER_PORT:0}
 
 spring:
   application:
-    name: compilation-service
+    name: rating-service
   datasource:
-    url: jdbc:postgresql://localhost:5433/ewm-main
-    username: main
-    password: main
+    url: jdbc:postgresql://rating-db:5432/rating-service
+    username: rating
+    password: rating
     driver-class-name: org.postgresql.Driver
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
@@ -20,6 +20,19 @@ spring:
     loadbalancer:
       enabled: true
 
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    preferIpAddress: true
+    hostname: localhost
+    instance-id: ${spring.application.name}:${server.port}
+    nonSecurePort: ${server.port}
+    leaseRenewalIntervalInSeconds: 10
+
 feign:
   circuitbreaker:
     enabled: true
@@ -31,13 +44,6 @@ feign:
         connectTimeout: 5000
         readTimeout: 5000
         loggerLevel: basic
-
-eureka:
-  client:
-    serviceUrl:
-      defaultZone: http://localhost:8761/eureka/
-    fetch-registry: true
-    register-with-eureka: true
 
 management:
   endpoints:
