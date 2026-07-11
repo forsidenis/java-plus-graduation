@@ -2,7 +2,6 @@ package ru.practicum.event.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import ru.practicum.category.model.Category;
 import ru.practicum.dto.eventDto.EventState;
 
 import java.time.LocalDateTime;
@@ -24,9 +23,8 @@ public class Event {
     @Column(name = "annotation", nullable = false, length = 2000)
     private String annotation;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id", nullable = false)
-    private Category category;
+    @Column(name = "category_id", nullable = false)
+    private Long categoryId;
 
     @Column(name = "created_on", nullable = false)
     private LocalDateTime createdOn;
@@ -51,13 +49,13 @@ public class Event {
     private Boolean paid;
 
     @Column(name = "participant_limit", nullable = false)
-    private Integer participantLimit; // 0 - без ограничений
+    private Integer participantLimit;
 
     @Column(name = "published_on")
     private LocalDateTime publishedOn;
 
     @Column(name = "request_moderation", nullable = false)
-    private Boolean requestModeration; // true - требуется пре-модерация
+    private Boolean requestModeration;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "state", nullable = false, length = 20)

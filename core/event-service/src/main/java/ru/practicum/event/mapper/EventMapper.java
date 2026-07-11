@@ -2,8 +2,7 @@ package ru.practicum.event.mapper;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import ru.practicum.category.mapper.CategoryMapper;
-import ru.practicum.category.model.Category;
+import ru.practicum.dto.categoryDto.CategoryDto;
 import ru.practicum.dto.eventDto.*;
 import ru.practicum.dto.userDto.UserDto;
 import ru.practicum.dto.userDto.UserShortDto;
@@ -15,10 +14,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class EventMapper {
 
-    public static Event toEvent(NewEventDto dto, Category category, UserDto initiator) {
+    public static Event toEvent(NewEventDto dto, Long categoryId, UserDto initiator) {
         Event event = Event.builder()
                 .annotation(dto.getAnnotation())
-                .category(category)
+                .categoryId(categoryId)
                 .createdOn(LocalDateTime.now())
                 .description(dto.getDescription())
                 .eventDate(dto.getEventDate())
@@ -38,11 +37,12 @@ public class EventMapper {
         return event;
     }
 
-    public static EventFullDto toFullDto(Event event, Long confirmedRequests, Long views, UserShortDto initiator) {
+    public static EventFullDto toFullDto(Event event, Long confirmedRequests, Long views,
+                                         UserShortDto initiator, CategoryDto category) {
         EventFullDto dto = EventFullDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
-                .category(CategoryMapper.toDto(event.getCategory()))
+                .category(category)
                 .confirmedRequests(confirmedRequests)
                 .createdOn(event.getCreatedOn())
                 .description(event.getDescription())
@@ -64,31 +64,18 @@ public class EventMapper {
         return dto;
     }
 
-    public static EventShortDto toShortDto(Event event, Long confirmedRequests, Long views, UserShortDto initiator) {
+    public static EventShortDto toShortDto(Event event, Long confirmedRequests, Long views,
+                                           UserShortDto initiator, CategoryDto category) {
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
-                .category(CategoryMapper.toDto(event.getCategory()))
+                .category(category)
                 .confirmedRequests(confirmedRequests)
                 .eventDate(event.getEventDate())
                 .initiator(initiator)
                 .paid(event.getPaid())
                 .title(event.getTitle())
                 .views(views)
-                .build();
-    }
-
-    public static EventShortDto toShortDto(Event event, UserShortDto initiator) {
-        return EventShortDto.builder()
-                .id(event.getId())
-                .annotation(event.getAnnotation())
-                .category(CategoryMapper.toDto(event.getCategory()))
-                .confirmedRequests(0L)
-                .eventDate(event.getEventDate())
-                .initiator(initiator)
-                .paid(event.getPaid())
-                .title(event.getTitle())
-                .views(0L)
                 .build();
     }
 }

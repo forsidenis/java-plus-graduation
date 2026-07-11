@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.dto.categoryDto.CategoryDto;
 import ru.practicum.dto.eventDto.EventFullDto;
 import ru.practicum.dto.eventDto.EventShortDto;
 import ru.practicum.dto.eventDto.NewEventDto;
@@ -20,6 +21,7 @@ import ru.practicum.dto.userDto.UserShortDto;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.service.PrivateEventService;
+import ru.practicum.faign.CategoryApiClient;
 import ru.practicum.faign.RequestServiceFeign;
 import ru.practicum.faign.UserServiceFeign;
 
@@ -37,6 +39,7 @@ public class PrivateEventController {
     private final PrivateEventService privateEventService;
     private final RequestServiceFeign requestServiceFeign;
     private final UserServiceFeign userServiceFeign;
+    private final CategoryApiClient categoryApiClient;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -46,9 +49,10 @@ public class PrivateEventController {
 
         UserDto user = userServiceFeign.getUser(userId);
         Event event = privateEventService.createEvent(userId, dto, user);
+        CategoryDto category = categoryApiClient.getCategory(event.getCategoryId());
 
         return EventMapper.toFullDto(event, 0L, 0L,
-                new UserShortDto(user.getId(), user.getName()));
+                new UserShortDto(user.getId(), user.getName()), category);
     }
 
     @GetMapping
@@ -60,21 +64,23 @@ public class PrivateEventController {
         UserDto user = userServiceFeign.getUser(userId);
         List<Event> events = privateEventService.getUserEvents(userId, from, size);
 
-        if (events.isEmpty()) {
-            return List.of();
-        }
+        if (events.isEmpty()) return List.of();
 
         Map<Long, Long> confirmedMap = getConfirmedRequestsCounts(events);
-
         Map<Long, Long> viewsMap = privateEventService.getViewsForEvents(events);
-
         UserShortDto initiator = new UserShortDto(user.getId(), user.getName());
+
+        // Получаем категории
+        List<Long> categoryIds = events.stream().map(Event::getCategoryId).distinct().collect(Collectors.toList());
+        Map<Long, CategoryDto> categoryMap = categoryApiClient.getCategories(0, 1000).stream()
+                .collect(Collectors.toMap(CategoryDto::getId, c -> c));
 
         return events.stream()
                 .map(event -> {
                     Long confirmedRequests = confirmedMap.getOrDefault(event.getId(), 0L);
                     Long views = viewsMap.getOrDefault(event.getId(), 0L);
-                    return EventMapper.toShortDto(event, confirmedRequests, views, initiator);
+                    CategoryDto category = categoryMap.get(event.getCategoryId());
+                    return EventMapper.toShortDto(event, confirmedRequests, views, initiator, category);
                 })
                 .collect(Collectors.toList());
     }
@@ -86,13 +92,12 @@ public class PrivateEventController {
 
         UserDto user = userServiceFeign.getUser(userId);
         Event event = privateEventService.getUserEventById(userId, eventId);
-
         Long confirmedRequests = getConfirmedRequestsCount(eventId);
-
         Long views = privateEventService.getViewsForEvent(event);
+        CategoryDto category = categoryApiClient.getCategory(event.getCategoryId());
 
         return EventMapper.toFullDto(event, confirmedRequests, views,
-                new UserShortDto(user.getId(), user.getName()));
+                new UserShortDto(user.getId(), user.getName()), category);
     }
 
     @PatchMapping("/{eventId}")
@@ -103,13 +108,12 @@ public class PrivateEventController {
 
         UserDto user = userServiceFeign.getUser(userId);
         Event event = privateEventService.updateUserEvent(userId, eventId, dto);
-
         Long confirmedRequests = getConfirmedRequestsCount(eventId);
-
         Long views = privateEventService.getViewsForEvent(event);
+        CategoryDto category = categoryApiClient.getCategory(event.getCategoryId());
 
         return EventMapper.toFullDto(event, confirmedRequests, views,
-                new UserShortDto(user.getId(), user.getName()));
+                new UserShortDto(user.getId(), user.getName()), category);
     }
 
     @GetMapping("/{eventId}/requests")
@@ -127,26 +131,16 @@ public class PrivateEventController {
         return requestServiceFeign.updateEventRequestsStatus(userId, eventId, updateRequest);
     }
 
-
     private Long getConfirmedRequestsCount(Long eventId) {
         return (long) requestServiceFeign.getAllByEventIdInAndStatus(1L, List.of(eventId), RequestStatus.CONFIRMED).size();
     }
 
     private Map<Long, Long> getConfirmedRequestsCounts(List<Event> events) {
-        if (events == null || events.isEmpty()) {
-            return Map.of();
-        }
-
-        List<Long> eventIds = events.stream()
-                .map(Event::getId)
-                .collect(Collectors.toList());
-
+        if (events == null || events.isEmpty()) return Map.of();
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
         return requestServiceFeign
                 .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
                 .stream()
-                .collect(Collectors.groupingBy(
-                        ParticipationRequestDto::getEvent,
-                        Collectors.counting()
-                ));
+                .collect(Collectors.groupingBy(ParticipationRequestDto::getEvent, Collectors.counting()));
     }
 }

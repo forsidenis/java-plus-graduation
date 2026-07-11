@@ -30,4 +30,7 @@ public interface PublicEventService {
     UserShortDto getEventInitiator(Event event);
 
     Map<Long, UserShortDto> getEventInitiators(List<Event> events);
+
+    List<Event> getEventsByIds(List<Long> ids);
+
 }

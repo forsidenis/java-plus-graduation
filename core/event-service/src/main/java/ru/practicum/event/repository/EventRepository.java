@@ -13,11 +13,10 @@ import java.util.Optional;
 
 public interface EventRepository extends JpaRepository<Event, Long> {
 
-    // Для админа: поиск с фильтрацией
     @Query("SELECT e FROM Event e WHERE " +
             "(coalesce(:users, null) IS NULL OR e.initiatorId IN :users) AND " +
             "(coalesce(:states, null) IS NULL OR e.state IN :states) AND " +
-            "(coalesce(:categories, null) IS NULL OR e.category.id IN :categories) AND " +
+            "(coalesce(:categories, null) IS NULL OR e.categoryId IN :categories) AND " +
             "(coalesce(:rangeStart, null) IS NULL OR e.eventDate >= :rangeStart) AND " +
             "(coalesce(:rangeEnd, null) IS NULL OR e.eventDate <= :rangeEnd)")
     List<Event> findAdminEvents(@Param("users") List<Long> users,
@@ -27,11 +26,10 @@ public interface EventRepository extends JpaRepository<Event, Long> {
                                 @Param("rangeEnd") LocalDateTime rangeEnd,
                                 Pageable pageable);
 
-    // Для публичного поиска: только опубликованные
     @Query("SELECT e FROM Event e WHERE e.state = 'PUBLISHED' " +
             "AND (:text IS NULL OR LOWER(e.annotation) LIKE LOWER(CONCAT('%', CAST(:text AS string), '%')) " +
             "OR LOWER(e.description) LIKE LOWER(CONCAT('%', CAST(:text AS string), '%'))) " +
-            "AND (coalesce(:categories, null) IS NULL OR e.category.id IN :categories) " +
+            "AND (coalesce(:categories, null) IS NULL OR e.categoryId IN :categories) " +
             "AND (coalesce(:paid, null) IS NULL OR e.paid = :paid) " +
             "AND (coalesce(:rangeStart, null) IS NULL OR e.eventDate >= :rangeStart) " +
             "AND (coalesce(:rangeEnd, null) IS NULL OR e.eventDate <= :rangeEnd)")

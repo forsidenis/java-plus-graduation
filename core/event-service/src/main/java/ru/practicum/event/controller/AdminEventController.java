@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.dto.categoryDto.CategoryDto;
 import ru.practicum.dto.eventDto.EventFullDto;
 import ru.practicum.dto.eventDto.EventState;
 import ru.practicum.dto.eventDto.UpdateEventAdminRequest;
@@ -17,6 +18,7 @@ import ru.practicum.dto.userDto.UserShortDto;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.service.AdminEventService;
+import ru.practicum.faign.CategoryApiClient;
 import ru.practicum.faign.RequestServiceFeign;
 import ru.practicum.faign.UserServiceFeign;
 
@@ -35,6 +37,7 @@ public class AdminEventController {
     private final AdminEventService adminEventService;
     private final UserServiceFeign userServiceFeign;
     private final RequestServiceFeign requestServiceFeign;
+    private final CategoryApiClient categoryApiClient;
 
     @GetMapping
     public List<EventFullDto> getEvents(@RequestParam(required = false) List<Long> users,
@@ -48,31 +51,27 @@ public class AdminEventController {
 
         List<Event> events = adminEventService.getAdminEvents(users, states, categories, rangeStart, rangeEnd, from, size);
 
-        if (events.isEmpty()) {
-            return List.of();
-        }
+        if (events.isEmpty()) return List.of();
 
-        List<Long> userIds = events.stream()
-                .map(Event::getInitiatorId)
-                .distinct()
-                .collect(Collectors.toList());
-
+        List<Long> userIds = events.stream().map(Event::getInitiatorId).distinct().collect(Collectors.toList());
         List<UserDto> userDtos = userServiceFeign.getAllUsersById(userIds);
-
         Map<Long, UserShortDto> userShortMap = userDtos.stream()
-                .collect(Collectors.toMap(
-                        UserDto::getId,
-                        user -> new UserShortDto(user.getId(), user.getName())
-                ));
+                .collect(Collectors.toMap(UserDto::getId, user -> new UserShortDto(user.getId(), user.getName())));
 
         Map<Long, Long> confirmedMap = getConfirmedRequestsCounts(events);
+
+        // Получаем категории для всех событий
+        List<Long> categoryIds = events.stream().map(Event::getCategoryId).distinct().collect(Collectors.toList());
+        Map<Long, CategoryDto> categoryMap = categoryApiClient.getCategories(0, 1000).stream()
+                .collect(Collectors.toMap(CategoryDto::getId, c -> c));
 
         return events.stream()
                 .map(event -> {
                     Long confirmedRequests = confirmedMap.getOrDefault(event.getId(), 0L);
                     Long views = adminEventService.getViewsForEvent(event);
                     UserShortDto initiator = userShortMap.get(event.getInitiatorId());
-                    return EventMapper.toFullDto(event, confirmedRequests, views, initiator);
+                    CategoryDto category = categoryMap.get(event.getCategoryId());
+                    return EventMapper.toFullDto(event, confirmedRequests, views, initiator, category);
                 })
                 .collect(Collectors.toList());
     }
@@ -86,35 +85,25 @@ public class AdminEventController {
 
         UserDto user = userServiceFeign.getUser(updatedEvent.getInitiatorId());
         UserShortDto userShortDto = new UserShortDto(user.getId(), user.getName());
-
         Long confirmedRequests = getConfirmedRequestsCount(eventId);
         Long views = adminEventService.getViewsForEvent(updatedEvent);
+        CategoryDto category = categoryApiClient.getCategory(updatedEvent.getCategoryId());
 
-        EventFullDto eventFullDto = EventMapper.toFullDto(updatedEvent, confirmedRequests, views, userShortDto);
+        EventFullDto eventFullDto = EventMapper.toFullDto(updatedEvent, confirmedRequests, views, userShortDto, category);
         log.info("Результат обновления: {}", eventFullDto);
         return eventFullDto;
     }
-
 
     private Long getConfirmedRequestsCount(Long eventId) {
         return (long) requestServiceFeign.getAllByEventIdInAndStatus(1L, List.of(eventId), RequestStatus.CONFIRMED).size();
     }
 
     private Map<Long, Long> getConfirmedRequestsCounts(List<Event> events) {
-        if (events == null || events.isEmpty()) {
-            return Map.of();
-        }
-
-        List<Long> eventIds = events.stream()
-                .map(Event::getId)
-                .collect(Collectors.toList());
-
+        if (events == null || events.isEmpty()) return Map.of();
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
         return requestServiceFeign
                 .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
                 .stream()
-                .collect(Collectors.groupingBy(
-                        ParticipationRequestDto::getEvent,
-                        Collectors.counting()
-                ));
+                .collect(Collectors.groupingBy(ParticipationRequestDto::getEvent, Collectors.counting()));
     }
 }

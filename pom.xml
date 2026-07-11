@@ -32,7 +32,6 @@
 		<module>infra</module>
 		<module>stat</module>
 		<module>core</module>
-		<module>core/api</module>
 	</modules>
 
 	<dependencyManagement>
