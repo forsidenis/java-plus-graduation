@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: category-service
+  main:
+    allow-bean-definition-overriding: true
   config:
     import: "configserver:"
   cloud:

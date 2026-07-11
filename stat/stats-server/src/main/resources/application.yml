@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: stats-server
+  main:
+    allow-bean-definition-overriding: true
   config:
     import: "configserver:"
   cloud:
