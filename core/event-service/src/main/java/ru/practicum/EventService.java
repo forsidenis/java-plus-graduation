@@ -8,7 +8,7 @@ import ru.practicum.exception.ErrorHandler;
 import ru.practicum.stat.client.StatsClient;
 
 @SpringBootApplication
-@EnableFeignClients
+@EnableFeignClients(basePackages = "ru.practicum.faign")
 @Import({StatsClient.class, ErrorHandler.class})
 public class EventService {
     public static void main(String[] args) {

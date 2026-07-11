@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Import;
 import ru.practicum.exception.ErrorHandler;
 
 @SpringBootApplication
-@EnableFeignClients
+@EnableFeignClients(basePackages = "ru.practicum.faign")
 @Import(ErrorHandler.class)
 public class RequestService {
     public static void main(String[] args) {

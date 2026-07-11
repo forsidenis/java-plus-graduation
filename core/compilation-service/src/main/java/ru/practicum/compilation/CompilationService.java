@@ -1,4 +1,4 @@
-package ru.practicum;
+package ru.practicum.compilation;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -9,7 +9,7 @@ import ru.practicum.exception.ErrorHandler;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableFeignClients
+@EnableFeignClients(basePackages = "ru.practicum.faign")
 @Import(ErrorHandler.class)
 public class CompilationService {
     public static void main(String[] args) {
