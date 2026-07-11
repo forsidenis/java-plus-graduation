@@ -1,13 +1,13 @@
-package ru.practicum.compilation.controller;
+package ru.practicum.controller;
 
 import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.compilation.mapper.CompilationMapper;
-import ru.practicum.compilation.model.Compilation;
-import ru.practicum.compilation.service.PublicCompilationService;
+import ru.practicum.mapper.CompilationMapper;
+import ru.practicum.model.Compilation;
+import ru.practicum.service.PublicCompilationService;
 import ru.practicum.dto.compilationDto.CompilationDto;
 import ru.practicum.dto.eventDto.EventShortDto;
 import ru.practicum.dto.requestDto.ParticipationRequestDto;

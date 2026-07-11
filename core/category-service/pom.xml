@@ -102,7 +102,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>ru.practicum.category.CategoryService</mainClass>
+                    <mainClass>ru.practicum.CategoryService</mainClass>
                 </configuration>
                 <executions>
                     <execution>

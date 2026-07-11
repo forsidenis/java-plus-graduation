@@ -1,6 +1,6 @@
-package ru.practicum.compilation.service;
+package ru.practicum.service;
 
-import ru.practicum.compilation.model.Compilation;
+import ru.practicum.model.Compilation;
 
 import java.util.List;
 import java.util.Map;

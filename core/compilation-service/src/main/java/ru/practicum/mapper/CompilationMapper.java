@@ -1,8 +1,8 @@
-package ru.practicum.compilation.mapper;
+package ru.practicum.mapper;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import ru.practicum.compilation.model.Compilation;
+import ru.practicum.model.Compilation;
 import ru.practicum.dto.compilationDto.CompilationDto;
 import ru.practicum.dto.compilationDto.NewCompilationDto;
 import ru.practicum.dto.compilationDto.UpdateCompilationRequest;
