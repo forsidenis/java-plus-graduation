@@ -9,7 +9,7 @@ import ru.practicum.dto.userDto.UserDto;
 
 import java.util.List;
 
-@FeignClient(name = "request-service", contextId = "requestServiceFeign", configuration = FeignConfig.class)
+@FeignClient(name = "user-service", contextId = "userServiceFeign", path = "/admin/users", configuration = FeignConfig.class)
 public interface UserServiceFeign {
 
     @PostMapping
