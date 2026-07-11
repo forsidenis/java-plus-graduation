@@ -9,7 +9,7 @@ import ru.practicum.dto.eventDto.EventShortDto;
 
 import java.util.List;
 
-@FeignClient(name = "event-service", configuration = FeignConfig.class)
+@FeignClient(name = "event-service", contextId = "eventServiceFeign", configuration = FeignConfig.class)
 public interface EventServiceFeign {
 
     @GetMapping("/events/{id}/WithoutHttp")

@@ -10,7 +10,7 @@ import ru.practicum.dto.requestDto.RequestStatus;
 
 import java.util.List;
 
-@FeignClient(name = "request-service", configuration = FeignConfig.class)
+@FeignClient(name = "request-service", contextId = "requestServiceFeign", configuration = FeignConfig.class)
 public interface RequestServiceFeign {
 
     @GetMapping("/users/{userId}/requests/{eventId}/requests")

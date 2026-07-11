@@ -8,7 +8,7 @@ import ru.practicum.dto.categoryDto.CategoryDto;
 
 import java.util.List;
 
-@FeignClient(name = "category-service", configuration = FeignConfig.class)
+@FeignClient(name = "category-service", contextId = "categoryApiClient", configuration = FeignConfig.class)
 public interface CategoryApiClient {
 
     @GetMapping("/categories/{catId}")
