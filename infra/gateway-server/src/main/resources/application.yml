@@ -7,7 +7,10 @@ spring:
     config:
       fail-fast: true
       retry:
-        useRandomPolicy: true
+        max-attempts: 30
+        initial-interval: 2000
+        max-interval: 6000
+        multiplier: 1.5
       discovery:
         enabled: true
         serviceId: config-server
