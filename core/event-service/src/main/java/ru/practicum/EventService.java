@@ -6,11 +6,14 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Import;
 import ru.practicum.exception.ErrorHandler;
+import ru.practicum.faign.EventServiceFeign;
+import ru.practicum.faign.RequestServiceFeign;
+import ru.practicum.faign.UserServiceFeign;
 import ru.practicum.stat.client.StatsClient;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableFeignClients(basePackages = "ru.practicum.faign")
+@EnableFeignClients(clients = {EventServiceFeign.class, RequestServiceFeign.class, UserServiceFeign.class})
 @Import({StatsClient.class, ErrorHandler.class})
 public class EventService {
     public static void main(String[] args) {
