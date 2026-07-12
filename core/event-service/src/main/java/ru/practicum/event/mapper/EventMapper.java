@@ -2,10 +2,10 @@ package ru.practicum.event.mapper;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
-import ru.practicum.dto.categoryDto.CategoryDto;
 import ru.practicum.dto.eventDto.*;
 import ru.practicum.dto.userDto.UserDto;
 import ru.practicum.dto.userDto.UserShortDto;
+import ru.practicum.event.model.Category;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.model.Location;
 
@@ -14,10 +14,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class EventMapper {
 
-    public static Event toEvent(NewEventDto dto, CategoryDto category, UserDto initiator) {
+    public static Event toEvent(NewEventDto dto, Category category, UserDto initiator) {
         Event event = Event.builder()
                 .annotation(dto.getAnnotation())
-                .category(CategoryMapper.toEntity(category))
+                .category(category)
                 .createdOn(LocalDateTime.now())
                 .description(dto.getDescription())
                 .eventDate(dto.getEventDate())
@@ -33,15 +33,15 @@ public class EventMapper {
             event.setLocation(new Location(
                     dto.getLocation().getLat(), dto.getLocation().getLon()));
         }
+
         return event;
     }
 
-    public static EventFullDto toFullDto(Event event, Long confirmedRequests, Long views,
-                                         UserShortDto initiator, CategoryDto category) {
+    public static EventFullDto toFullDto(Event event, Long confirmedRequests, Long views, UserShortDto initiator) {
         EventFullDto dto = EventFullDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
-                .category(category != null ? category : CategoryMapper.toDto(event.getCategory()))
+                .category(CategoryMapper.toDto(event.getCategory()))
                 .confirmedRequests(confirmedRequests)
                 .createdOn(event.getCreatedOn())
                 .description(event.getDescription())
@@ -59,15 +59,15 @@ public class EventMapper {
         if (event.getLocation() != null) {
             dto.setLocation(new LocationDto(event.getLocation().getLat(), event.getLocation().getLon()));
         }
+
         return dto;
     }
 
-    public static EventShortDto toShortDto(Event event, Long confirmedRequests, Long views,
-                                           UserShortDto initiator, CategoryDto category) {
+    public static EventShortDto toShortDto(Event event, Long confirmedRequests, Long views, UserShortDto initiator) {
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
-                .category(category != null ? category : CategoryMapper.toDto(event.getCategory()))
+                .category(CategoryMapper.toDto(event.getCategory()))
                 .confirmedRequests(confirmedRequests)
                 .eventDate(event.getEventDate())
                 .initiator(initiator)

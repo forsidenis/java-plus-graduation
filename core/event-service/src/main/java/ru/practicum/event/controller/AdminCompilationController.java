@@ -73,7 +73,7 @@ public class AdminCompilationController {
                     Long confirmed = confirmedMap.getOrDefault(event.getId(), 0L);
                     Long views = viewsMap.getOrDefault(event.getId(), 0L);
                     UserShortDto initiator = initiatorMap.get(event.getInitiatorId());
-                    return EventMapper.toShortDto(event, confirmed, views, initiator, null);
+                    return EventMapper.toShortDto(event, confirmed, views, initiator);
                 })
                 .collect(Collectors.toList());
 

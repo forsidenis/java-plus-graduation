@@ -6,12 +6,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.dto.categoryDto.CategoryDto;
 import ru.practicum.dto.eventDto.EventState;
 import ru.practicum.dto.eventDto.NewEventDto;
 import ru.practicum.dto.eventDto.UpdateEventUserRequest;
 import ru.practicum.dto.userDto.UserDto;
-import ru.practicum.event.mapper.CategoryMapper;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.mapper.LocationMapper;
 import ru.practicum.event.model.Category;
@@ -43,8 +41,8 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     @Override
     @Transactional
     public Event createEvent(Long userId, NewEventDto dto, UserDto user) {
-        CategoryDto category = CategoryMapper.toDto(categoryRepository.findById(dto.getCategory())
-                .orElseThrow(() -> new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена")));
+        Category category = categoryRepository.findById(dto.getCategory())
+                .orElseThrow(() -> new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена"));
         validateEventDate(dto.getEventDate());
         Event event = EventMapper.toEvent(dto, category, user);
         return eventRepository.save(event);

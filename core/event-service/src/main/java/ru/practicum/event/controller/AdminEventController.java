@@ -17,7 +17,6 @@ import ru.practicum.dto.userDto.UserShortDto;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.service.AdminEventService;
-import ru.practicum.event.service.CategoryService;
 import ru.practicum.faign.RequestServiceFeign;
 import ru.practicum.faign.UserServiceFeign;
 
@@ -36,7 +35,6 @@ public class AdminEventController {
     private final AdminEventService adminEventService;
     private final UserServiceFeign userServiceFeign;
     private final RequestServiceFeign requestServiceFeign;
-    private final CategoryService categoryService;
 
     @GetMapping
     public List<EventFullDto> getEvents(@RequestParam(required = false) List<Long> users,
@@ -47,13 +45,25 @@ public class AdminEventController {
                                         @RequestParam(defaultValue = "0") int from,
                                         @RequestParam(defaultValue = "10") int size) {
         log.info("GET /admin/events - админский поиск событий");
-        List<Event> events = adminEventService.getAdminEvents(users, states, categories, rangeStart, rangeEnd, from, size);
-        if (events.isEmpty()) return List.of();
 
-        List<Long> userIds = events.stream().map(Event::getInitiatorId).distinct().collect(Collectors.toList());
+        List<Event> events = adminEventService.getAdminEvents(users, states, categories, rangeStart, rangeEnd, from, size);
+
+        if (events.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> userIds = events.stream()
+                .map(Event::getInitiatorId)
+                .distinct()
+                .collect(Collectors.toList());
+
         List<UserDto> userDtos = userServiceFeign.getAllUsersById(userIds);
+
         Map<Long, UserShortDto> userShortMap = userDtos.stream()
-                .collect(Collectors.toMap(UserDto::getId, user -> new UserShortDto(user.getId(), user.getName())));
+                .collect(Collectors.toMap(
+                        UserDto::getId,
+                        user -> new UserShortDto(user.getId(), user.getName())
+                ));
 
         Map<Long, Long> confirmedMap = getConfirmedRequestsCounts(events);
 
@@ -62,7 +72,7 @@ public class AdminEventController {
                     Long confirmedRequests = confirmedMap.getOrDefault(event.getId(), 0L);
                     Long views = adminEventService.getViewsForEvent(event);
                     UserShortDto initiator = userShortMap.get(event.getInitiatorId());
-                    return EventMapper.toFullDto(event, confirmedRequests, views, initiator, null);
+                    return EventMapper.toFullDto(event, confirmedRequests, views, initiator);
                 })
                 .collect(Collectors.toList());
     }
@@ -71,12 +81,16 @@ public class AdminEventController {
     public EventFullDto updateEvent(@PathVariable @Positive Long eventId,
                                     @RequestBody @Valid UpdateEventAdminRequest dto) {
         log.info("PATCH /admin/events/{} - админское обновление события: {}", eventId, dto);
+
         Event updatedEvent = adminEventService.updateAdminEvent(eventId, dto);
+
         UserDto user = userServiceFeign.getUser(updatedEvent.getInitiatorId());
         UserShortDto userShortDto = new UserShortDto(user.getId(), user.getName());
+
         Long confirmedRequests = getConfirmedRequestsCount(eventId);
         Long views = adminEventService.getViewsForEvent(updatedEvent);
-        return EventMapper.toFullDto(updatedEvent, confirmedRequests, views, userShortDto, null);
+
+        return EventMapper.toFullDto(updatedEvent, confirmedRequests, views, userShortDto);
     }
 
     private Long getConfirmedRequestsCount(Long eventId) {
@@ -84,11 +98,20 @@ public class AdminEventController {
     }
 
     private Map<Long, Long> getConfirmedRequestsCounts(List<Event> events) {
-        if (events == null || events.isEmpty()) return Map.of();
-        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+        if (events == null || events.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Long> eventIds = events.stream()
+                .map(Event::getId)
+                .collect(Collectors.toList());
+
         return requestServiceFeign
                 .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
                 .stream()
-                .collect(Collectors.groupingBy(ParticipationRequestDto::getEvent, Collectors.counting()));
+                .collect(Collectors.groupingBy(
+                        ParticipationRequestDto::getEvent,
+                        Collectors.counting()
+                ));
     }
 }
