@@ -10,37 +10,35 @@ spring:
         locator:
           enabled: true
       routes:
-        # ===== МАРШРУТЫ ДЛЯ CATEGORY-SERVICE =====
+        # ===== МАРШРУТЫ ДЛЯ EVENT-SERVICE (включая категории и подборки) =====
         - id: category-service-admin
-          uri: lb://category-service
+          uri: lb://event-service
           predicates:
             - Path=/admin/categories/**
           filters:
             - StripPrefix=0
 
         - id: category-service-public
-          uri: lb://category-service
+          uri: lb://event-service
           predicates:
             - Path=/categories/**
           filters:
             - StripPrefix=0
 
-        # ===== МАРШРУТЫ ДЛЯ COMPILATION-SERVICE =====
         - id: compilation-service-admin
-          uri: lb://compilation-service
+          uri: lb://event-service
           predicates:
             - Path=/admin/compilations/**
           filters:
             - StripPrefix=0
 
         - id: compilation-service-public
-          uri: lb://compilation-service
+          uri: lb://event-service
           predicates:
             - Path=/compilations/**
           filters:
             - StripPrefix=0
 
-        # ===== МАРШРУТЫ ДЛЯ EVENT-SERVICE =====
         - id: event-service-admin
           uri: lb://event-service
           predicates:
