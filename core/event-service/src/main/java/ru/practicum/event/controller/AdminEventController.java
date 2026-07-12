@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.dto.categoryDto.CategoryDto;
 import ru.practicum.dto.eventDto.EventFullDto;
 import ru.practicum.dto.eventDto.EventState;
 import ru.practicum.dto.eventDto.UpdateEventAdminRequest;
@@ -18,7 +17,7 @@ import ru.practicum.dto.userDto.UserShortDto;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.service.AdminEventService;
-import ru.practicum.faign.CategoryApiClient;
+import ru.practicum.event.service.CategoryService;
 import ru.practicum.faign.RequestServiceFeign;
 import ru.practicum.faign.UserServiceFeign;
 
@@ -37,7 +36,7 @@ public class AdminEventController {
     private final AdminEventService adminEventService;
     private final UserServiceFeign userServiceFeign;
     private final RequestServiceFeign requestServiceFeign;
-    private final CategoryApiClient categoryApiClient;
+    private final CategoryService categoryService;
 
     @GetMapping
     public List<EventFullDto> getEvents(@RequestParam(required = false) List<Long> users,
@@ -48,9 +47,7 @@ public class AdminEventController {
                                         @RequestParam(defaultValue = "0") int from,
                                         @RequestParam(defaultValue = "10") int size) {
         log.info("GET /admin/events - админский поиск событий");
-
         List<Event> events = adminEventService.getAdminEvents(users, states, categories, rangeStart, rangeEnd, from, size);
-
         if (events.isEmpty()) return List.of();
 
         List<Long> userIds = events.stream().map(Event::getInitiatorId).distinct().collect(Collectors.toList());
@@ -60,18 +57,12 @@ public class AdminEventController {
 
         Map<Long, Long> confirmedMap = getConfirmedRequestsCounts(events);
 
-        // Получаем категории для всех событий
-        List<Long> categoryIds = events.stream().map(Event::getCategoryId).distinct().collect(Collectors.toList());
-        Map<Long, CategoryDto> categoryMap = categoryApiClient.getCategories(0, 1000).stream()
-                .collect(Collectors.toMap(CategoryDto::getId, c -> c));
-
         return events.stream()
                 .map(event -> {
                     Long confirmedRequests = confirmedMap.getOrDefault(event.getId(), 0L);
                     Long views = adminEventService.getViewsForEvent(event);
                     UserShortDto initiator = userShortMap.get(event.getInitiatorId());
-                    CategoryDto category = categoryMap.get(event.getCategoryId());
-                    return EventMapper.toFullDto(event, confirmedRequests, views, initiator, category);
+                    return EventMapper.toFullDto(event, confirmedRequests, views, initiator, null);
                 })
                 .collect(Collectors.toList());
     }
@@ -80,18 +71,12 @@ public class AdminEventController {
     public EventFullDto updateEvent(@PathVariable @Positive Long eventId,
                                     @RequestBody @Valid UpdateEventAdminRequest dto) {
         log.info("PATCH /admin/events/{} - админское обновление события: {}", eventId, dto);
-
         Event updatedEvent = adminEventService.updateAdminEvent(eventId, dto);
-
         UserDto user = userServiceFeign.getUser(updatedEvent.getInitiatorId());
         UserShortDto userShortDto = new UserShortDto(user.getId(), user.getName());
         Long confirmedRequests = getConfirmedRequestsCount(eventId);
         Long views = adminEventService.getViewsForEvent(updatedEvent);
-        CategoryDto category = categoryApiClient.getCategory(updatedEvent.getCategoryId());
-
-        EventFullDto eventFullDto = EventMapper.toFullDto(updatedEvent, confirmedRequests, views, userShortDto, category);
-        log.info("Результат обновления: {}", eventFullDto);
-        return eventFullDto;
+        return EventMapper.toFullDto(updatedEvent, confirmedRequests, views, userShortDto, null);
     }
 
     private Long getConfirmedRequestsCount(Long eventId) {

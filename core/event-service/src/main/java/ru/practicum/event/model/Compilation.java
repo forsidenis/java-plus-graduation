@@ -1,4 +1,4 @@
-package ru.practicum.model;
+package ru.practicum.event.model;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -26,10 +26,12 @@ public class Compilation {
     @Column(name = "pinned", nullable = false)
     private Boolean pinned;
 
-    @ElementCollection
-    @CollectionTable(name = "compilation_events",
-            joinColumns = @JoinColumn(name = "compilation_id"))
-    @Column(name = "event_id")
+    @ManyToMany
+    @JoinTable(
+            name = "compilation_events",
+            joinColumns = @JoinColumn(name = "compilation_id"),
+            inverseJoinColumns = @JoinColumn(name = "event_id")
+    )
     @Builder.Default
-    private List<Long> eventIds = new ArrayList<>();
+    private List<Event> events = new ArrayList<>();
 }

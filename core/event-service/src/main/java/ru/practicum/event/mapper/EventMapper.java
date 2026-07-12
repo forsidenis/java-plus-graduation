@@ -14,10 +14,10 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class EventMapper {
 
-    public static Event toEvent(NewEventDto dto, Long categoryId, UserDto initiator) {
+    public static Event toEvent(NewEventDto dto, CategoryDto category, UserDto initiator) {
         Event event = Event.builder()
                 .annotation(dto.getAnnotation())
-                .categoryId(categoryId)
+                .category(CategoryMapper.toEntity(category))
                 .createdOn(LocalDateTime.now())
                 .description(dto.getDescription())
                 .eventDate(dto.getEventDate())
@@ -33,7 +33,6 @@ public class EventMapper {
             event.setLocation(new Location(
                     dto.getLocation().getLat(), dto.getLocation().getLon()));
         }
-
         return event;
     }
 
@@ -42,7 +41,7 @@ public class EventMapper {
         EventFullDto dto = EventFullDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
-                .category(category)
+                .category(category != null ? category : CategoryMapper.toDto(event.getCategory()))
                 .confirmedRequests(confirmedRequests)
                 .createdOn(event.getCreatedOn())
                 .description(event.getDescription())
@@ -60,7 +59,6 @@ public class EventMapper {
         if (event.getLocation() != null) {
             dto.setLocation(new LocationDto(event.getLocation().getLat(), event.getLocation().getLon()));
         }
-
         return dto;
     }
 
@@ -69,7 +67,7 @@ public class EventMapper {
         return EventShortDto.builder()
                 .id(event.getId())
                 .annotation(event.getAnnotation())
-                .category(category)
+                .category(category != null ? category : CategoryMapper.toDto(event.getCategory()))
                 .confirmedRequests(confirmedRequests)
                 .eventDate(event.getEventDate())
                 .initiator(initiator)

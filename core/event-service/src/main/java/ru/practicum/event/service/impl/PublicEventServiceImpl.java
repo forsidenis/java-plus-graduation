@@ -42,7 +42,6 @@ public class PublicEventServiceImpl implements PublicEventService {
                                        LocalDateTime rangeStart, LocalDateTime rangeEnd,
                                        Boolean onlyAvailable, String sort, int from, int size,
                                        HttpServletRequest request) {
-        log.info("Публичный поиск событий");
         validateDateRange(rangeStart, rangeEnd);
         LocalDateTime start = rangeStart != null ? rangeStart : LocalDateTime.now();
         Pageable pageable = createPageable(sort, from, size);
@@ -57,22 +56,19 @@ public class PublicEventServiceImpl implements PublicEventService {
 
     @Override
     public Event getPublicEventById(Long eventId, HttpServletRequest request) {
-        log.info("Публичное получение события {}", eventId);
         Event event = eventRepository.findByIdAndState(eventId, EventState.PUBLISHED)
-                .orElseThrow(() -> new NotFoundException("Ивент с id:" + eventId + " не найден"));
+                .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено"));
         saveHit(request);
         return event;
     }
 
     @Override
     public Event getPublicEventByIdWithoutHttp(Long eventId) {
-        log.info("Публичное получение события без попадания в статистику {}", eventId);
         return findPublishedEventById(eventId);
     }
 
     @Override
     public List<Event> getEventsByIds(List<Long> ids) {
-        log.info("Получение событий по списку id: {}", ids);
         return eventRepository.findAllById(ids);
     }
 
@@ -86,8 +82,7 @@ public class PublicEventServiceImpl implements PublicEventService {
         if (event == null) return 0L;
         LocalDateTime start = event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn();
         if (start == null) start = LocalDateTime.now().minusYears(10);
-        List<String> uris = List.of("/events/" + event.getId());
-        List<ViewStatsDto> stats = statsClient.getStats(start, LocalDateTime.now(), uris, true);
+        List<ViewStatsDto> stats = statsClient.getStats(start, LocalDateTime.now(), List.of("/events/" + event.getId()), true);
         return stats.isEmpty() ? 0L : stats.getFirst().getHits();
     }
 
@@ -106,12 +101,12 @@ public class PublicEventServiceImpl implements PublicEventService {
     @Override
     public Map<Long, Long> getViewsForEvents(List<Event> events) {
         if (events == null || events.isEmpty()) return Map.of();
-        LocalDateTime earliestStart = events.stream()
+        LocalDateTime earliest = events.stream()
                 .map(e -> e.getPublishedOn() != null ? e.getPublishedOn() : e.getCreatedOn())
                 .min(LocalDateTime::compareTo)
                 .orElse(LocalDateTime.now().minusYears(10));
         List<String> uris = events.stream().map(e -> "/events/" + e.getId()).toList();
-        List<ViewStatsDto> stats = statsClient.getStats(earliestStart, LocalDateTime.now(), uris, false);
+        List<ViewStatsDto> stats = statsClient.getStats(earliest, LocalDateTime.now(), uris, false);
         return stats.stream()
                 .collect(Collectors.toMap(
                         v -> Long.parseLong(v.getUri().substring(v.getUri().lastIndexOf('/') + 1)),
@@ -149,9 +144,8 @@ public class PublicEventServiceImpl implements PublicEventService {
         }
     }
 
-    private void validateDateRange(LocalDateTime rangeStart, LocalDateTime rangeEnd) {
-        if (rangeStart == null) return;
-        if (rangeEnd != null && rangeStart.isAfter(rangeEnd)) {
+    private void validateDateRange(LocalDateTime start, LocalDateTime end) {
+        if (start != null && end != null && start.isAfter(end)) {
             throw new IllegalArgumentException("Дата начала не может быть позже даты окончания");
         }
     }

@@ -14,8 +14,6 @@
     <packaging>pom</packaging>
     <modules>
         <module>common-dto</module>
-        <module>category-service</module>
-        <module>compilation-service</module>
         <module>event-service</module>
         <module>rating-service</module>
         <module>request-service</module>

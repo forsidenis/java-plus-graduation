@@ -1,4 +1,4 @@
-package ru.practicum.controller;
+package ru.practicum.event.controller;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Positive;
@@ -7,9 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.practicum.mapper.CompilationMapper;
-import ru.practicum.model.Compilation;
-import ru.practicum.service.AdminCompilationService;
 import ru.practicum.dto.compilationDto.CompilationDto;
 import ru.practicum.dto.compilationDto.NewCompilationDto;
 import ru.practicum.dto.compilationDto.UpdateCompilationRequest;
@@ -18,7 +15,11 @@ import ru.practicum.dto.requestDto.ParticipationRequestDto;
 import ru.practicum.dto.requestDto.RequestStatus;
 import ru.practicum.dto.userDto.UserDto;
 import ru.practicum.dto.userDto.UserShortDto;
-import ru.practicum.faign.EventServiceFeign;
+import ru.practicum.event.mapper.CompilationMapper;
+import ru.practicum.event.mapper.EventMapper;
+import ru.practicum.event.model.Compilation;
+import ru.practicum.event.model.Event;
+import ru.practicum.event.service.AdminCompilationService;
 import ru.practicum.faign.RequestServiceFeign;
 import ru.practicum.faign.UserServiceFeign;
 
@@ -34,15 +35,14 @@ import java.util.stream.Collectors;
 public class AdminCompilationController {
 
     private final AdminCompilationService adminCompilationService;
-    private final EventServiceFeign eventServiceFeign;
     private final RequestServiceFeign requestServiceFeign;
     private final UserServiceFeign userServiceFeign;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public CompilationDto createCompilation(@Valid @RequestBody NewCompilationDto newCompilationDto) {
+    public CompilationDto createCompilation(@Valid @RequestBody NewCompilationDto dto) {
         log.info("POST /admin/compilations - создание подборки");
-        Compilation compilation = adminCompilationService.createCompilation(newCompilationDto);
+        Compilation compilation = adminCompilationService.createCompilation(dto);
         return buildCompilationDto(compilation);
     }
 
@@ -62,38 +62,27 @@ public class AdminCompilationController {
     }
 
     private CompilationDto buildCompilationDto(Compilation compilation) {
-        List<Long> eventIds = compilation.getEventIds();
-        List<EventShortDto> eventDtos = eventServiceFeign.getEventsByIds(eventIds);
+        List<Event> events = compilation.getEvents();
 
-        Map<Long, Long> viewsMap = adminCompilationService.getViewsForEvents(eventIds);
-        Map<Long, Long> confirmedMap = getConfirmedRequestsCounts(eventIds);
-        Map<Long, UserShortDto> initiatorMap = getEventInitiators(eventIds);
+        Map<Long, Long> viewsMap = adminCompilationService.getViewsForEvents(events);
+        Map<Long, Long> confirmedMap = getConfirmedRequestsCounts(events);
+        Map<Long, UserShortDto> initiatorMap = getEventInitiators(events);
 
-        eventDtos = eventDtos.stream()
-                .map(dto -> {
-                    Long confirmed = confirmedMap.getOrDefault(dto.getId(), 0L);
-                    Long views = viewsMap.getOrDefault(dto.getId(), 0L);
-                    UserShortDto initiator = initiatorMap.get(dto.getInitiator().getId());
-                    // Обновляем поля (можно создать новый объект)
-                    return EventShortDto.builder()
-                            .id(dto.getId())
-                            .annotation(dto.getAnnotation())
-                            .category(dto.getCategory())
-                            .confirmedRequests(confirmed)
-                            .eventDate(dto.getEventDate())
-                            .initiator(initiator)
-                            .paid(dto.getPaid())
-                            .title(dto.getTitle())
-                            .views(views)
-                            .build();
+        List<EventShortDto> eventShortDtos = events.stream()
+                .map(event -> {
+                    Long confirmed = confirmedMap.getOrDefault(event.getId(), 0L);
+                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
+                    UserShortDto initiator = initiatorMap.get(event.getInitiatorId());
+                    return EventMapper.toShortDto(event, confirmed, views, initiator, null);
                 })
                 .collect(Collectors.toList());
 
-        return CompilationMapper.toDto(compilation, eventDtos);
+        return CompilationMapper.toDto(compilation, eventShortDtos);
     }
 
-    private Map<Long, Long> getConfirmedRequestsCounts(List<Long> eventIds) {
-        if (eventIds == null || eventIds.isEmpty()) return Map.of();
+    private Map<Long, Long> getConfirmedRequestsCounts(List<Event> events) {
+        if (events == null || events.isEmpty()) return Map.of();
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
         return requestServiceFeign
                 .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
                 .stream()
@@ -103,15 +92,12 @@ public class AdminCompilationController {
                 ));
     }
 
-    private Map<Long, UserShortDto> getEventInitiators(List<Long> eventIds) {
-        if (eventIds == null || eventIds.isEmpty()) return Map.of();
-        // Получаем события и из них инициаторов
-        List<EventShortDto> events = eventServiceFeign.getEventsByIds(eventIds);
+    private Map<Long, UserShortDto> getEventInitiators(List<Event> events) {
+        if (events == null || events.isEmpty()) return Map.of();
         List<Long> userIds = events.stream()
-                .map(e -> e.getInitiator().getId())
+                .map(Event::getInitiatorId)
                 .distinct()
                 .collect(Collectors.toList());
-        if (userIds.isEmpty()) return Map.of();
         List<UserDto> users = userServiceFeign.getAllUsersById(userIds);
         return users.stream()
                 .collect(Collectors.toMap(

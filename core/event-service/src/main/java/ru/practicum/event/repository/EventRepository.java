@@ -16,7 +16,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("SELECT e FROM Event e WHERE " +
             "(coalesce(:users, null) IS NULL OR e.initiatorId IN :users) AND " +
             "(coalesce(:states, null) IS NULL OR e.state IN :states) AND " +
-            "(coalesce(:categories, null) IS NULL OR e.categoryId IN :categories) AND " +
+            "(coalesce(:categories, null) IS NULL OR e.category.id IN :categories) AND " +
             "(coalesce(:rangeStart, null) IS NULL OR e.eventDate >= :rangeStart) AND " +
             "(coalesce(:rangeEnd, null) IS NULL OR e.eventDate <= :rangeEnd)")
     List<Event> findAdminEvents(@Param("users") List<Long> users,
@@ -29,7 +29,7 @@ public interface EventRepository extends JpaRepository<Event, Long> {
     @Query("SELECT e FROM Event e WHERE e.state = 'PUBLISHED' " +
             "AND (:text IS NULL OR LOWER(e.annotation) LIKE LOWER(CONCAT('%', CAST(:text AS string), '%')) " +
             "OR LOWER(e.description) LIKE LOWER(CONCAT('%', CAST(:text AS string), '%'))) " +
-            "AND (coalesce(:categories, null) IS NULL OR e.categoryId IN :categories) " +
+            "AND (coalesce(:categories, null) IS NULL OR e.category.id IN :categories) " +
             "AND (coalesce(:paid, null) IS NULL OR e.paid = :paid) " +
             "AND (coalesce(:rangeStart, null) IS NULL OR e.eventDate >= :rangeStart) " +
             "AND (coalesce(:rangeEnd, null) IS NULL OR e.eventDate <= :rangeEnd)")
@@ -42,5 +42,5 @@ public interface EventRepository extends JpaRepository<Event, Long> {
 
     List<Event> findAllByInitiatorId(Long userId, Pageable pageable);
 
-    Optional<Event> findByIdAndState(Long userId, EventState state);
+    Optional<Event> findByIdAndState(Long eventId, EventState state);
 }

@@ -1,15 +1,15 @@
-package ru.practicum.service;
+package ru.practicum.event.service;
 
-import ru.practicum.model.Compilation;
+import ru.practicum.event.model.Compilation;
+import ru.practicum.event.model.Event;
 
 import java.util.List;
 import java.util.Map;
 
 public interface PublicCompilationService {
-
     List<Compilation> getCompilations(Boolean pinned, int from, int size);
 
     Compilation getCompilationById(Long compId);
 
-    Map<Long, Long> getViewsForEvents(List<Long> eventIds);
+    Map<Long, Long> getViewsForEvents(List<Event> events);
 }
