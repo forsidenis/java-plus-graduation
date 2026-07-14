@@ -39,7 +39,7 @@ public class PrivateRequestController {
         userServiceFeign.getUser(userId);
 
         return requestService.getUserRequests(userId).stream()
-                .map(RequestMapper.INSTANCE::toDto)
+                .map(RequestMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -53,7 +53,7 @@ public class PrivateRequestController {
         EventFullDto event = eventServiceFeign.getEventByIdWithoutHttp(eventId);
 
         ParticipationRequest pr = requestService.createRequest(userId, eventId, event, requester);
-        return RequestMapper.INSTANCE.toDto(pr);
+        return RequestMapper.toDto(pr);
     }
 
     @PatchMapping("/{requestId}/cancel")
@@ -62,7 +62,7 @@ public class PrivateRequestController {
         log.info("PATCH /users/{}/requests/{}/cancel", userId, requestId);
 
         ParticipationRequest pr = requestService.cancelRequest(userId, requestId);
-        return RequestMapper.INSTANCE.toDto(pr);
+        return RequestMapper.toDto(pr);
     }
 
     @GetMapping("/{eventId}/requests")
@@ -73,7 +73,7 @@ public class PrivateRequestController {
         EventFullDto event = eventServiceFeign.getEventByIdWithoutHttp(eventId);
 
         return requestService.getEventRequests(userId, eventId, event).stream()
-                .map(RequestMapper.INSTANCE::toDto)
+                .map(RequestMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -90,19 +90,20 @@ public class PrivateRequestController {
 
     @GetMapping("/{eventId}")
     public boolean confirmUserRegisterOnEvent(@PathVariable @Positive Long userId,
-                                              @PathVariable @Positive Long eventId,
-                                              @RequestParam("status") RequestStatus requestStatus) {
+                                       @PathVariable @Positive Long eventId,
+                                       @RequestParam("status") RequestStatus requestStatus) {
         log.info("GET /users/{}/events/{}?RequestStatus={}", userId, eventId, requestStatus);
         return requestService.confirmUserRegisterOnEvent(userId, eventId, requestStatus);
     }
 
     @GetMapping("/allWithStatus/list")
     public List<ParticipationRequestDto> getAllByEventIdInAndStatus(
+            @PathVariable Long userId,
             @RequestParam("eventIds") List<Long> eventIds,
             @RequestParam("status") RequestStatus requestStatus) {
-        log.info("GET /users/requests/allWithStatus?RequestStatus={} Event list: {}", requestStatus, eventIds);
-        return requestService.getAllByEventIdInAndStatus(eventIds, requestStatus).stream()
-                .map(RequestMapper.INSTANCE::toDto)
+        log.info("GET /users/{}/requests/allWithStatus?RequestStatus={} Event list: {}", userId, requestStatus, eventIds);
+        return requestService.getAllByEventIdInAndStatus(1L, eventIds, requestStatus).stream()
+                .map(RequestMapper::toDto)
                 .collect(Collectors.toList());
     }
 }

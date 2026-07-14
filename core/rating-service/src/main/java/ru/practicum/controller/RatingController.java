@@ -19,7 +19,6 @@ import ru.practicum.model.EventRating;
 import ru.practicum.service.RatingService;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping
@@ -49,7 +48,7 @@ public class RatingController {
 
         EventRating rating = ratingService.addLike(userId, eventId, dto, event, userAttended);
 
-        return RatingMapper.INSTANCE.toResponseDto(rating);
+        return RatingMapper.toResponseDto(rating);
     }
 
     @PostMapping("/private/events/{userId}/{eventId}/dislike")
@@ -68,7 +67,7 @@ public class RatingController {
 
         EventRating rating = ratingService.addDislike(userId, eventId, dto, event, userAttended);
 
-        return RatingMapper.INSTANCE.toResponseDto(rating);
+        return RatingMapper.toResponseDto(rating);
     }
 
     @DeleteMapping("/private/events/{userId}/{eventId}/deleteRating")
@@ -111,8 +110,6 @@ public class RatingController {
 
         List<Object[]> topData = ratingService.getTopRatedEvents(from, size, order);
 
-        return topData.stream()
-                .map(RatingMapper.INSTANCE::toTopDto)
-                .collect(Collectors.toList());
+        return RatingMapper.toTopDtoList(topData);
     }
 }

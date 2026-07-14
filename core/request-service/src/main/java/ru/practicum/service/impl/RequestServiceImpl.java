@@ -42,7 +42,8 @@ public class RequestServiceImpl implements RequestService {
         log.info("Создание заявки от пользователя {} на событие {}", userId, eventId);
 
         if (event.getInitiator().getId().equals(userId)) {
-            throw new ConflictException("Инициатор события не может добавить запрос на участие в своём событии");
+            throw new ConflictException("Инициатор события не может добавить запрос " +
+                    "на участие в своём событии");
         }
 
         if (event.getState() != EventState.PUBLISHED) {
@@ -61,7 +62,7 @@ public class RequestServiceImpl implements RequestService {
             }
         }
 
-        ParticipationRequest request = RequestMapper.INSTANCE.toNewRequest(event, userId);
+        ParticipationRequest request = RequestMapper.toNewRequest(event, userId);
 
         if (!event.getRequestModeration() || event.getParticipantLimit() == 0) {
             request.setStatus(RequestStatus.CONFIRMED);
@@ -160,8 +161,8 @@ public class RequestServiceImpl implements RequestService {
         log.info("Статусы заявок обновлены");
 
         return EventRequestStatusUpdateResult.builder()
-                .confirmedRequests(confirmed.stream().map(RequestMapper.INSTANCE::toDto).collect(Collectors.toList()))
-                .rejectedRequests(rejected.stream().map(RequestMapper.INSTANCE::toDto).collect(Collectors.toList()))
+                .confirmedRequests(confirmed.stream().map(RequestMapper::toDto).collect(Collectors.toList()))
+                .rejectedRequests(rejected.stream().map(RequestMapper::toDto).collect(Collectors.toList()))
                 .build();
     }
 
@@ -172,7 +173,7 @@ public class RequestServiceImpl implements RequestService {
     }
 
     @Override
-    public List<ParticipationRequest> getAllByEventIdInAndStatus(List<Long> eventIds, RequestStatus requestStatus) {
-        return requestRepository.findAllByEventIdInAndStatus(eventIds, requestStatus);
+    public List<ParticipationRequest> getAllByEventIdInAndStatus(Long userId, List<Long> eventId, RequestStatus requestStatus) {
+        return requestRepository.findAllByEventIdInAndStatus(eventId, requestStatus);
     }
 }

@@ -20,14 +20,14 @@
     <properties>
         <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <lombok.version>1.18.38</lombok.version>
+        <lombok.version>1.18.36</lombok.version>
         <spring-cloud-dependencies.version>2023.0.3</spring-cloud-dependencies.version>
         <spring-cloud-starter-openfeign.version>4.1.3</spring-cloud-starter-openfeign.version>
         <spring-cloud-starter-circuitbreaker-resilience4j.version>3.1.2</spring-cloud-starter-circuitbreaker-resilience4j.version>
         <spring-cloud-starter-config.version>4.1.3</spring-cloud-starter-config.version>
         <spring-cloud-starter-netflix-eureka-client.version>4.1.3</spring-cloud-starter-netflix-eureka-client.version>
 
-        <!-- MapStruct -->
+        <!-- MapStruct и связка с Lombok -->
         <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
     </properties>
@@ -60,6 +60,7 @@
                 <version>${org.mapstruct.version}</version>
                 <scope>provided</scope>
             </dependency>
+            <!-- Связка Lombok + MapStruct -->
             <dependency>
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok-mapstruct-binding</artifactId>
@@ -71,6 +72,7 @@
     <build>
         <pluginManagement>
             <plugins>
+                <!-- Плагин Surefire -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-surefire-plugin</artifactId>
@@ -80,6 +82,8 @@
                         </systemPropertyVariables>
                     </configuration>
                 </plugin>
+
+                <!-- Checkstyle -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-checkstyle-plugin</artifactId>
@@ -106,6 +110,8 @@
                         </dependency>
                     </dependencies>
                 </plugin>
+
+                <!-- SpotBugs -->
                 <plugin>
                     <groupId>com.github.spotbugs</groupId>
                     <artifactId>spotbugs-maven-plugin</artifactId>
@@ -122,6 +128,8 @@
                         </execution>
                     </executions>
                 </plugin>
+
+                <!-- JaCoCo -->
                 <plugin>
                     <groupId>org.jacoco</groupId>
                     <artifactId>jacoco-maven-plugin</artifactId>
@@ -191,6 +199,7 @@
                     </executions>
                 </plugin>
 
+                <!-- Компилятор с поддержкой Lombok + MapStruct -->
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-compiler-plugin</artifactId>
@@ -198,6 +207,23 @@
                     <configuration>
                         <source>${java.version}</source>
                         <target>${java.version}</target>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.mapstruct</groupId>
+                                <artifactId>mapstruct-processor</artifactId>
+                                <version>${org.mapstruct.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                                <version>${lombok.version}</version>
+                            </path>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok-mapstruct-binding</artifactId>
+                                <version>${lombok-mapstruct-binding.version}</version>
+                            </path>
+                        </annotationProcessorPaths>
                     </configuration>
                 </plugin>
             </plugins>

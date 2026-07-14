@@ -37,8 +37,9 @@ public class AdminCompilationServiceImpl implements AdminCompilationService {
     public Compilation createCompilation(NewCompilationDto dto) {
         log.info("Создание подборки: {}", dto);
         List<Event> events = getEventsByIds(dto.getEvents());
-        Compilation compilation = CompilationMapper.INSTANCE.toEntity(dto, events);
-        return compilationRepository.save(compilation);
+        Compilation compilation = CompilationMapper.toEntity(dto, events);
+        compilation = compilationRepository.save(compilation);
+        return compilation;
     }
 
     @Override
@@ -56,7 +57,7 @@ public class AdminCompilationServiceImpl implements AdminCompilationService {
         if (request.getEvents() != null) {
             events = getEventsByIds(request.getEvents());
         }
-        CompilationMapper.INSTANCE.updateEntity(compilation, request, events);
+        CompilationMapper.updateEntity(compilation, request, events);
         return compilationRepository.save(compilation);
     }
 

@@ -73,18 +73,18 @@ public class AdminCompilationController {
                     Long confirmed = confirmedMap.getOrDefault(event.getId(), 0L);
                     Long views = viewsMap.getOrDefault(event.getId(), 0L);
                     UserShortDto initiator = initiatorMap.get(event.getInitiatorId());
-                    return EventMapper.INSTANCE.toShortDto(event, confirmed, views, initiator);
+                    return EventMapper.toShortDto(event, confirmed, views, initiator);
                 })
                 .collect(Collectors.toList());
 
-        return CompilationMapper.INSTANCE.toDto(compilation, eventShortDtos);
+        return CompilationMapper.toDto(compilation, eventShortDtos);
     }
 
     private Map<Long, Long> getConfirmedRequestsCounts(List<Event> events) {
         if (events == null || events.isEmpty()) return Map.of();
         List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
         return requestServiceFeign
-                .getAllByEventIdInAndStatus(eventIds, RequestStatus.CONFIRMED)
+                .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
                 .stream()
                 .collect(Collectors.groupingBy(
                         ParticipationRequestDto::getEvent,

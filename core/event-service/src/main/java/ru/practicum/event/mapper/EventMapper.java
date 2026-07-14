@@ -1,40 +1,79 @@
 package ru.practicum.event.mapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.factory.Mappers;
-import ru.practicum.dto.eventDto.EventFullDto;
-import ru.practicum.dto.eventDto.EventShortDto;
-import ru.practicum.dto.eventDto.NewEventDto;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
+import ru.practicum.dto.eventDto.*;
 import ru.practicum.dto.userDto.UserDto;
 import ru.practicum.dto.userDto.UserShortDto;
 import ru.practicum.event.model.Category;
 import ru.practicum.event.model.Event;
+import ru.practicum.event.model.Location;
 
-@Mapper(uses = {CategoryMapper.class, LocationMapper.class})
-public interface EventMapper {
-    EventMapper INSTANCE = Mappers.getMapper(EventMapper.class);
+import java.time.LocalDateTime;
 
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "createdOn", expression = "java(java.time.LocalDateTime.now())")
-    @Mapping(target = "state", constant = "PENDING")
-    @Mapping(target = "initiatorId", source = "initiator.id")
-    @Mapping(target = "location", source = "dto.location")
-    @Mapping(target = "category", source = "category")
-    @Mapping(target = "publishedOn", ignore = true)
-    Event toEvent(NewEventDto dto, Category category, UserDto initiator);
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class EventMapper {
 
-    @Mapping(target = "initiator", source = "initiator")
-    @Mapping(target = "confirmedRequests", source = "confirmedRequests")
-    @Mapping(target = "views", source = "views")
-    @Mapping(target = "category", source = "event.category")
-    @Mapping(target = "id", source = "event.id")
-    EventFullDto toFullDto(Event event, Long confirmedRequests, Long views, UserShortDto initiator);
+    public static Event toEvent(NewEventDto dto, Category category, UserDto initiator) {
+        Event event = Event.builder()
+                .annotation(dto.getAnnotation())
+                .category(category)
+                .createdOn(LocalDateTime.now())
+                .description(dto.getDescription())
+                .eventDate(dto.getEventDate())
+                .initiatorId(initiator.getId())
+                .paid(dto.getPaid())
+                .participantLimit(dto.getParticipantLimit())
+                .requestModeration(dto.getRequestModeration())
+                .state(EventState.PENDING)
+                .title(dto.getTitle())
+                .build();
 
-    @Mapping(target = "initiator", source = "initiator")
-    @Mapping(target = "confirmedRequests", source = "confirmedRequests")
-    @Mapping(target = "views", source = "views")
-    @Mapping(target = "category", source = "event.category")
-    @Mapping(target = "id", source = "event.id")
-    EventShortDto toShortDto(Event event, Long confirmedRequests, Long views, UserShortDto initiator);
+        if (dto.getLocation() != null) {
+            event.setLocation(new Location(
+                    dto.getLocation().getLat(), dto.getLocation().getLon()));
+        }
+
+        return event;
+    }
+
+    public static EventFullDto toFullDto(Event event, Long confirmedRequests, Long views, UserShortDto initiator) {
+        EventFullDto dto = EventFullDto.builder()
+                .id(event.getId())
+                .annotation(event.getAnnotation())
+                .category(CategoryMapper.toDto(event.getCategory()))
+                .confirmedRequests(confirmedRequests)
+                .createdOn(event.getCreatedOn())
+                .description(event.getDescription())
+                .eventDate(event.getEventDate())
+                .initiator(initiator)
+                .paid(event.getPaid())
+                .participantLimit(event.getParticipantLimit())
+                .publishedOn(event.getPublishedOn())
+                .requestModeration(event.getRequestModeration())
+                .state(event.getState())
+                .title(event.getTitle())
+                .views(views)
+                .build();
+
+        if (event.getLocation() != null) {
+            dto.setLocation(new LocationDto(event.getLocation().getLat(), event.getLocation().getLon()));
+        }
+
+        return dto;
+    }
+
+    public static EventShortDto toShortDto(Event event, Long confirmedRequests, Long views, UserShortDto initiator) {
+        return EventShortDto.builder()
+                .id(event.getId())
+                .annotation(event.getAnnotation())
+                .category(CategoryMapper.toDto(event.getCategory()))
+                .confirmedRequests(confirmedRequests)
+                .eventDate(event.getEventDate())
+                .initiator(initiator)
+                .paid(event.getPaid())
+                .title(event.getTitle())
+                .views(views)
+                .build();
+    }
 }

@@ -34,10 +34,10 @@ public class CategoryServiceImpl implements CategoryService {
         if (categoryRepository.existsByName(dto.getName())) {
             throw new AlreadyExistsException("Категория с именем '" + dto.getName() + "' уже существует");
         }
-        Category category = CategoryMapper.INSTANCE.toEntity(dto);
+        Category category = CategoryMapper.toEntity(dto);
         try {
             category = categoryRepository.save(category);
-            return CategoryMapper.INSTANCE.toDto(category);
+            return CategoryMapper.toDto(category);
         } catch (DataIntegrityViolationException e) {
             throw new AlreadyExistsException("Категория с именем '" + dto.getName() + "' уже существует");
         }
@@ -54,7 +54,7 @@ public class CategoryServiceImpl implements CategoryService {
         category.setName(dto.getName());
         try {
             category = categoryRepository.save(category);
-            return CategoryMapper.INSTANCE.toDto(category);
+            return CategoryMapper.toDto(category);
         } catch (DataIntegrityViolationException e) {
             throw new AlreadyExistsException("Категория с именем '" + dto.getName() + "' уже существует");
         }
@@ -78,7 +78,7 @@ public class CategoryServiceImpl implements CategoryService {
         Pageable pageable = PageRequest.of(from / size, size);
         return categoryRepository.findAll(pageable)
                 .stream()
-                .map(CategoryMapper.INSTANCE::toDto)
+                .map(CategoryMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -86,6 +86,6 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryDto getCategory(Long catId) {
         Category category = categoryRepository.findById(catId)
                 .orElseThrow(() -> new NotFoundException("Категория с id=" + catId + " не найдена"));
-        return CategoryMapper.INSTANCE.toDto(category);
+        return CategoryMapper.toDto(category);
     }
 }

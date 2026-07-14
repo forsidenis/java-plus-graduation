@@ -20,7 +20,6 @@ import ru.practicum.repository.EventRatingRepository;
 import ru.practicum.service.RatingService;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -68,7 +67,7 @@ public class RatingServiceImpl implements RatingService {
             return existingRating;
         }
 
-        EventRating newRating = RatingMapper.INSTANCE.toEntity(eventId, userId, type, dto.getTimestamp());
+        EventRating newRating = RatingMapper.toEntity(eventId, userId, type, dto.getTimestamp());
         newRating = ratingRepository.save(newRating);
         log.debug("Создана новая оценка: {}", newRating);
 
@@ -95,14 +94,14 @@ public class RatingServiceImpl implements RatingService {
         List<Object[]> ratingData = ratingRepository.getRatingStatsByEventId(eventId);
 
         if (ratingData.isEmpty()) {
-            return RatingMapper.INSTANCE.toStatsDto(eventId, 0L, 0L);
+            return RatingMapper.toStatsDto(eventId, 0L, 0L);
         }
 
         Object[] data = ratingData.get(0);
         Long likes = ((Number) data[1]).longValue();
         Long dislikes = ((Number) data[2]).longValue();
 
-        return RatingMapper.INSTANCE.toStatsDto(eventId, likes, dislikes);
+        return RatingMapper.toStatsDto(eventId, likes, dislikes);
     }
 
     @Override
@@ -128,11 +127,7 @@ public class RatingServiceImpl implements RatingService {
             throw new ConditionsNotMetException("Параметр rating должен быть 'like' или 'dislike'");
         }
 
-        // Ручное преобразование с использованием INSTANCE
-        List<EventRatingResponseDto> ratingDtos = ratings.stream()
-                .map(RatingMapper.INSTANCE::toResponseDto)
-                .collect(Collectors.toList());
-
+        List<EventRatingResponseDto> ratingDtos = RatingMapper.toResponseDtoList(ratings);
         int totalPages = (int) Math.ceil((double) totalElements / size);
 
         return EventRatingListDto.builder()

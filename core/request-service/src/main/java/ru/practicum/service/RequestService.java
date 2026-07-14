@@ -24,5 +24,5 @@ public interface RequestService {
 
     boolean confirmUserRegisterOnEvent(Long userId, Long eventId, RequestStatus requestStatus);
 
-    List<ParticipationRequest> getAllByEventIdInAndStatus(List<Long> eventIds, RequestStatus requestStatus);
+    List<ParticipationRequest> getAllByEventIdInAndStatus(Long userId, List<Long> eventId, RequestStatus requestStatus);
 }

@@ -1,15 +1,32 @@
 package ru.practicum.event.mapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.factory.Mappers;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import ru.practicum.dto.eventDto.LocationDto;
 import ru.practicum.event.model.Location;
 
-@Mapper
-public interface LocationMapper {
-    LocationMapper INSTANCE = Mappers.getMapper(LocationMapper.class);
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class LocationMapper {
 
-    LocationDto toDto(Location location);
+    public static Location toLocation(LocationDto locationDto) {
+        if (locationDto == null) {
+            return null;
+        }
 
-    Location toLocation(LocationDto locationDto);
+        Location location = new Location();
+        location.setLat(locationDto.getLat());
+        location.setLon(locationDto.getLon());
+        return location;
+    }
+
+    public static LocationDto toLocationDto(Location location) {
+        if (location == null) {
+            return null;
+        }
+
+        LocationDto locationDto = new LocationDto();
+        locationDto.setLat(location.getLat());
+        locationDto.setLon(location.getLon());
+        return locationDto;
+    }
 }

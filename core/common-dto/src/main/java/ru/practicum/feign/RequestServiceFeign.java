@@ -27,8 +27,9 @@ public interface RequestServiceFeign {
                                        @PathVariable @Positive Long eventId,
                                        @RequestParam("status") RequestStatus requestStatus);
 
-    @GetMapping("/allWithStatus/list")
+    @GetMapping("/users/{userId}/requests/allWithStatus/list")
     List<ParticipationRequestDto> getAllByEventIdInAndStatus(
+            @PathVariable Long userId,
             @RequestParam("eventIds") List<Long> eventIds,
             @RequestParam("status") RequestStatus requestStatus);
 }

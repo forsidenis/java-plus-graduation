@@ -1,15 +1,25 @@
 package ru.practicum.event.mapper;
 
-import org.mapstruct.Mapper;
-import org.mapstruct.factory.Mappers;
+import lombok.AccessLevel;
+import lombok.NoArgsConstructor;
 import ru.practicum.dto.categoryDto.CategoryDto;
 import ru.practicum.event.model.Category;
 
-@Mapper
-public interface CategoryMapper {
-    CategoryMapper INSTANCE = Mappers.getMapper(CategoryMapper.class);
+@NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class CategoryMapper {
 
-    CategoryDto toDto(Category category);
+    public static Category toEntity(CategoryDto dto) {
+        return Category.builder()
+                .id(dto.getId())
+                .name(dto.getName())
+                .build();
+    }
 
-    Category toEntity(CategoryDto dto);
+    public static CategoryDto toDto(Category category) {
+        if (category == null) return null;
+        return CategoryDto.builder()
+                .id(category.getId())
+                .name(category.getName())
+                .build();
+    }
 }

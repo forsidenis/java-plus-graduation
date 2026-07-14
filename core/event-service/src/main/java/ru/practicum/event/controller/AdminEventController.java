@@ -72,7 +72,7 @@ public class AdminEventController {
                     Long confirmedRequests = confirmedMap.getOrDefault(event.getId(), 0L);
                     Long views = adminEventService.getViewsForEvent(event);
                     UserShortDto initiator = userShortMap.get(event.getInitiatorId());
-                    return EventMapper.INSTANCE.toFullDto(event, confirmedRequests, views, initiator);
+                    return EventMapper.toFullDto(event, confirmedRequests, views, initiator);
                 })
                 .collect(Collectors.toList());
     }
@@ -90,11 +90,11 @@ public class AdminEventController {
         Long confirmedRequests = getConfirmedRequestsCount(eventId);
         Long views = adminEventService.getViewsForEvent(updatedEvent);
 
-        return EventMapper.INSTANCE.toFullDto(updatedEvent, confirmedRequests, views, userShortDto);
+        return EventMapper.toFullDto(updatedEvent, confirmedRequests, views, userShortDto);
     }
 
     private Long getConfirmedRequestsCount(Long eventId) {
-        return (long) requestServiceFeign.getAllByEventIdInAndStatus(List.of(eventId), RequestStatus.CONFIRMED).size();
+        return (long) requestServiceFeign.getAllByEventIdInAndStatus(1L, List.of(eventId), RequestStatus.CONFIRMED).size();
     }
 
     private Map<Long, Long> getConfirmedRequestsCounts(List<Event> events) {
@@ -107,7 +107,7 @@ public class AdminEventController {
                 .collect(Collectors.toList());
 
         return requestServiceFeign
-                .getAllByEventIdInAndStatus(eventIds, RequestStatus.CONFIRMED)
+                .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
                 .stream()
                 .collect(Collectors.groupingBy(
                         ParticipationRequestDto::getEvent,
