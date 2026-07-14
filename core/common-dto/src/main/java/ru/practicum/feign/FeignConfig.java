@@ -1,4 +1,4 @@
-package ru.practicum.faign;
+package ru.practicum.feign;
 
 import feign.RequestInterceptor;
 import org.springframework.context.annotation.Bean;

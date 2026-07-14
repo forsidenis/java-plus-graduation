@@ -1,26 +1,21 @@
 package ru.practicum.mapper;
 
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.factory.Mappers;
 import ru.practicum.dto.userDto.NewUserRequest;
 import ru.practicum.dto.userDto.UserDto;
 import ru.practicum.dto.userDto.UserShortDto;
 import ru.practicum.model.User;
 
+@Mapper
+public interface UserMapper {
+    UserMapper INSTANCE = Mappers.getMapper(UserMapper.class);
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class UserMapper {
+    @Mapping(target = "id", ignore = true)
+    User toEntity(NewUserRequest request);
 
-    public static User toEntity(NewUserRequest request) {
-        return new User(null, request.getEmail(), request.getName());
-    }
+    UserDto toDto(User user);
 
-    public static UserDto toDto(User user) {
-        return new UserDto(user.getId(), user.getEmail(), user.getName());
-    }
-
-    public static UserShortDto toShortDto(User user) {
-        if (user == null) return null;
-        return new UserShortDto(user.getId(), user.getName());
-    }
+    UserShortDto toShortDto(User user);
 }

@@ -1,4 +1,4 @@
-package ru.practicum.faign;
+package ru.practicum.feign;
 
 import jakarta.validation.Valid;
 import org.springframework.cloud.openfeign.FeignClient;

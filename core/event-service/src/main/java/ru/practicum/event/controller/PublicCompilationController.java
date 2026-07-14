@@ -16,8 +16,8 @@ import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Compilation;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.service.PublicCompilationService;
-import ru.practicum.faign.RequestServiceFeign;
-import ru.practicum.faign.UserServiceFeign;
+import ru.practicum.feign.RequestServiceFeign;
+import ru.practicum.feign.UserServiceFeign;
 
 import java.util.List;
 import java.util.Map;
@@ -63,11 +63,11 @@ public class PublicCompilationController {
                     Long confirmed = confirmedMap.getOrDefault(event.getId(), 0L);
                     Long views = viewsMap.getOrDefault(event.getId(), 0L);
                     UserShortDto initiator = initiatorMap.get(event.getInitiatorId());
-                    return EventMapper.toShortDto(event, confirmed, views, initiator);
+                    return EventMapper.INSTANCE.toShortDto(event, confirmed, views, initiator);
                 })
                 .collect(Collectors.toList());
 
-        return CompilationMapper.toDto(compilation, eventShortDtos);
+        return CompilationMapper.INSTANCE.toDto(compilation, eventShortDtos);
     }
 
     private Map<Long, Long> getConfirmedRequestsCounts(List<Event> events) {
@@ -75,7 +75,7 @@ public class PublicCompilationController {
         List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
         try {
             return requestServiceFeign
-                    .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
+                    .getAllByEventIdInAndStatus(eventIds, RequestStatus.CONFIRMED)
                     .stream()
                     .collect(Collectors.groupingBy(
                             ParticipationRequestDto::getEvent,

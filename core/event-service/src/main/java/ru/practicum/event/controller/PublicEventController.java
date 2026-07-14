@@ -62,7 +62,7 @@ public class PublicEventController {
                     Long views = viewsMap.getOrDefault(event.getId(), 0L);
                     UserShortDto initiator = initiatorMap.get(event.getInitiatorId());
 
-                    return EventMapper.toShortDto(event, confirmedRequests, views, initiator);
+                    return EventMapper.INSTANCE.toShortDto(event, confirmedRequests, views, initiator);
                 })
                 .collect(Collectors.toList());
     }
@@ -77,7 +77,7 @@ public class PublicEventController {
         Long views = publicEventService.getViewsForEvent(event);
         UserShortDto initiator = publicEventService.getEventInitiator(event);
 
-        return EventMapper.toFullDto(event, confirmedRequests, views, initiator);
+        return EventMapper.INSTANCE.toFullDto(event, confirmedRequests, views, initiator);
     }
 
     @GetMapping("/{id}/WithoutHttp")
@@ -90,6 +90,6 @@ public class PublicEventController {
         Long views = publicEventService.getViewsForEvent(event);
         UserShortDto initiator = publicEventService.getEventInitiator(event);
 
-        return EventMapper.toFullDto(event, confirmedRequests, views, initiator);
+        return EventMapper.INSTANCE.toFullDto(event, confirmedRequests, views, initiator);
     }
 }

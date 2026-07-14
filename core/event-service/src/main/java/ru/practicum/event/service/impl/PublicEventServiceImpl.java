@@ -16,8 +16,8 @@ import ru.practicum.event.repository.EventRepository;
 import ru.practicum.event.service.PublicEventService;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
-import ru.practicum.faign.RequestServiceFeign;
-import ru.practicum.faign.UserServiceFeign;
+import ru.practicum.feign.RequestServiceFeign;
+import ru.practicum.feign.UserServiceFeign;
 import ru.practicum.stat.client.StatsClient;
 import ru.practicum.stat.dto.EndpointHitDto;
 import ru.practicum.stat.dto.ViewStatsDto;
@@ -74,7 +74,7 @@ public class PublicEventServiceImpl implements PublicEventService {
 
     @Override
     public Long getConfirmedRequestsCount(Long eventId) {
-        return (long) requestServiceFeign.getAllByEventIdInAndStatus(1L, List.of(eventId), RequestStatus.CONFIRMED).size();
+        return (long) requestServiceFeign.getAllByEventIdInAndStatus(List.of(eventId), RequestStatus.CONFIRMED).size();
     }
 
     @Override
@@ -90,7 +90,7 @@ public class PublicEventServiceImpl implements PublicEventService {
     public Map<Long, Long> getConfirmedRequestsCounts(List<Long> eventIds) {
         if (eventIds == null || eventIds.isEmpty()) return Map.of();
         return requestServiceFeign
-                .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
+                .getAllByEventIdInAndStatus(eventIds, RequestStatus.CONFIRMED)
                 .stream()
                 .collect(Collectors.groupingBy(
                         request -> request.getEvent(),
@@ -163,7 +163,7 @@ public class PublicEventServiceImpl implements PublicEventService {
 
     private boolean isEventAvailable(Event event) {
         if (event.getParticipantLimit() == 0) return true;
-        long confirmed = (long) requestServiceFeign.getAllByEventIdInAndStatus(1L, List.of(event.getId()), RequestStatus.CONFIRMED).size();
+        long confirmed = (long) requestServiceFeign.getAllByEventIdInAndStatus(List.of(event.getId()), RequestStatus.CONFIRMED).size();
         return confirmed < event.getParticipantLimit();
     }
 

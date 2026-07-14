@@ -25,7 +25,7 @@ public class UserServiceImpl implements UserService {
     public User saveUser(NewUserRequest request) {
         log.info("Создание нового пользователя: {}", request);
         userEmailCheck(request);
-        User user = UserMapper.toEntity(request);
+        User user = UserMapper.INSTANCE.toEntity(request);
         user = userRepository.save(user);
         log.info("Создан пользователь с id={}", user.getId());
         return user;
@@ -64,5 +64,4 @@ public class UserServiceImpl implements UserService {
             throw new AlreadyExistsException("Пользователь с адресом '" + request.getEmail() + "' уже существует");
         }
     }
-
 }

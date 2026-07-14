@@ -1,35 +1,24 @@
 package ru.practicum.mapper;
 
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.factory.Mappers;
 import ru.practicum.dto.eventDto.EventFullDto;
 import ru.practicum.dto.requestDto.ParticipationRequestDto;
-import ru.practicum.dto.requestDto.RequestStatus;
 import ru.practicum.model.ParticipationRequest;
 
-import java.time.LocalDateTime;
+@Mapper
+public interface RequestMapper {
+    RequestMapper INSTANCE = Mappers.getMapper(RequestMapper.class);
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class RequestMapper {
+    @Mapping(target = "event", source = "eventId")
+    @Mapping(target = "requester", source = "requesterId")
+    ParticipationRequestDto toDto(ParticipationRequest request);
 
-    public static ParticipationRequestDto toDto(ParticipationRequest request) {
-        if (request == null) return null;
-
-        return ParticipationRequestDto.builder()
-                .id(request.getId())
-                .created(request.getCreated())
-                .event(request.getEventId())
-                .requester(request.getRequesterId())
-                .status(request.getStatus())
-                .build();
-    }
-
-    public static ParticipationRequest toNewRequest(EventFullDto event, Long userId) {
-        return ParticipationRequest.builder()
-                .created(LocalDateTime.now())
-                .eventId(event.getId())
-                .requesterId(userId)
-                .status(RequestStatus.PENDING)
-                .build();
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "created", expression = "java(java.time.LocalDateTime.now())")
+    @Mapping(target = "eventId", source = "event.id")
+    @Mapping(target = "requesterId", source = "userId")
+    @Mapping(target = "status", constant = "PENDING")
+    ParticipationRequest toNewRequest(EventFullDto event, Long userId);
 }

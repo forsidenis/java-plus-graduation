@@ -1,4 +1,4 @@
-package ru.practicum.faign;
+package ru.practicum.feign;
 
 import jakarta.validation.constraints.Positive;
 import org.springframework.cloud.openfeign.FeignClient;
@@ -27,9 +27,8 @@ public interface RequestServiceFeign {
                                        @PathVariable @Positive Long eventId,
                                        @RequestParam("status") RequestStatus requestStatus);
 
-    @GetMapping("/users/{userId}/requests/allWithStatus/list")
+    @GetMapping("/allWithStatus/list")
     List<ParticipationRequestDto> getAllByEventIdInAndStatus(
-            @PathVariable Long userId,
             @RequestParam("eventIds") List<Long> eventIds,
             @RequestParam("status") RequestStatus requestStatus);
 }

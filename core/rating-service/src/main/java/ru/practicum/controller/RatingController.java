@@ -11,14 +11,15 @@ import ru.practicum.dto.eventDto.EventFullDto;
 import ru.practicum.dto.ratingDto.*;
 import ru.practicum.dto.requestDto.RequestStatus;
 import ru.practicum.dto.userDto.UserDto;
-import ru.practicum.faign.EventServiceFeign;
-import ru.practicum.faign.RequestServiceFeign;
-import ru.practicum.faign.UserServiceFeign;
+import ru.practicum.feign.EventServiceFeign;
+import ru.practicum.feign.RequestServiceFeign;
+import ru.practicum.feign.UserServiceFeign;
 import ru.practicum.mapper.RatingMapper;
 import ru.practicum.model.EventRating;
 import ru.practicum.service.RatingService;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping
@@ -48,7 +49,7 @@ public class RatingController {
 
         EventRating rating = ratingService.addLike(userId, eventId, dto, event, userAttended);
 
-        return RatingMapper.toResponseDto(rating);
+        return RatingMapper.INSTANCE.toResponseDto(rating);
     }
 
     @PostMapping("/private/events/{userId}/{eventId}/dislike")
@@ -67,7 +68,7 @@ public class RatingController {
 
         EventRating rating = ratingService.addDislike(userId, eventId, dto, event, userAttended);
 
-        return RatingMapper.toResponseDto(rating);
+        return RatingMapper.INSTANCE.toResponseDto(rating);
     }
 
     @DeleteMapping("/private/events/{userId}/{eventId}/deleteRating")
@@ -110,6 +111,8 @@ public class RatingController {
 
         List<Object[]> topData = ratingService.getTopRatedEvents(from, size, order);
 
-        return RatingMapper.toTopDtoList(topData);
+        return topData.stream()
+                .map(RatingMapper.INSTANCE::toTopDto)
+                .collect(Collectors.toList());
     }
 }

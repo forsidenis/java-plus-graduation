@@ -44,7 +44,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         Category category = categoryRepository.findById(dto.getCategory())
                 .orElseThrow(() -> new NotFoundException("Категория с id=" + dto.getCategory() + " не найдена"));
         validateEventDate(dto.getEventDate());
-        Event event = EventMapper.toEvent(dto, category, user);
+        Event event = EventMapper.INSTANCE.toEvent(dto, category, user);
         return eventRepository.save(event);
     }
 
@@ -120,7 +120,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
         if (dto.getDescription() != null) event.setDescription(dto.getDescription());
         if (dto.getEventDate() != null) event.setEventDate(dto.getEventDate());
         if (category != null) event.setCategory(category);
-        if (dto.getLocation() != null) event.setLocation(LocationMapper.toLocation(dto.getLocation()));
+        if (dto.getLocation() != null) event.setLocation(LocationMapper.INSTANCE.toLocation(dto.getLocation()));
         if (dto.getPaid() != null) event.setPaid(dto.getPaid());
         if (dto.getParticipantLimit() != null) event.setParticipantLimit(dto.getParticipantLimit());
         if (dto.getRequestModeration() != null) event.setRequestModeration(dto.getRequestModeration());

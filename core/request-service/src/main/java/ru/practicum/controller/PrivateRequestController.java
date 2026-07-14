@@ -12,8 +12,8 @@ import ru.practicum.dto.requestDto.EventRequestStatusUpdateResult;
 import ru.practicum.dto.requestDto.ParticipationRequestDto;
 import ru.practicum.dto.requestDto.RequestStatus;
 import ru.practicum.dto.userDto.UserDto;
-import ru.practicum.faign.EventServiceFeign;
-import ru.practicum.faign.UserServiceFeign;
+import ru.practicum.feign.EventServiceFeign;
+import ru.practicum.feign.UserServiceFeign;
 import ru.practicum.mapper.RequestMapper;
 import ru.practicum.model.ParticipationRequest;
 import ru.practicum.service.RequestService;
@@ -39,7 +39,7 @@ public class PrivateRequestController {
         userServiceFeign.getUser(userId);
 
         return requestService.getUserRequests(userId).stream()
-                .map(RequestMapper::toDto)
+                .map(RequestMapper.INSTANCE::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -53,7 +53,7 @@ public class PrivateRequestController {
         EventFullDto event = eventServiceFeign.getEventByIdWithoutHttp(eventId);
 
         ParticipationRequest pr = requestService.createRequest(userId, eventId, event, requester);
-        return RequestMapper.toDto(pr);
+        return RequestMapper.INSTANCE.toDto(pr);
     }
 
     @PatchMapping("/{requestId}/cancel")
@@ -62,7 +62,7 @@ public class PrivateRequestController {
         log.info("PATCH /users/{}/requests/{}/cancel", userId, requestId);
 
         ParticipationRequest pr = requestService.cancelRequest(userId, requestId);
-        return RequestMapper.toDto(pr);
+        return RequestMapper.INSTANCE.toDto(pr);
     }
 
     @GetMapping("/{eventId}/requests")
@@ -73,7 +73,7 @@ public class PrivateRequestController {
         EventFullDto event = eventServiceFeign.getEventByIdWithoutHttp(eventId);
 
         return requestService.getEventRequests(userId, eventId, event).stream()
-                .map(RequestMapper::toDto)
+                .map(RequestMapper.INSTANCE::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -89,21 +89,20 @@ public class PrivateRequestController {
     }
 
     @GetMapping("/{eventId}")
-    boolean confirmUserRegisterOnEvent(@PathVariable @Positive Long userId,
-                                       @PathVariable @Positive Long eventId,
-                                       @RequestParam("status") RequestStatus requestStatus) {
+    public boolean confirmUserRegisterOnEvent(@PathVariable @Positive Long userId,
+                                              @PathVariable @Positive Long eventId,
+                                              @RequestParam("status") RequestStatus requestStatus) {
         log.info("GET /users/{}/events/{}?RequestStatus={}", userId, eventId, requestStatus);
         return requestService.confirmUserRegisterOnEvent(userId, eventId, requestStatus);
     }
 
     @GetMapping("/allWithStatus/list")
-    List<ParticipationRequestDto> getAllByEventIdInAndStatus(
-            @PathVariable Long userId,
+    public List<ParticipationRequestDto> getAllByEventIdInAndStatus(
             @RequestParam("eventIds") List<Long> eventIds,
             @RequestParam("status") RequestStatus requestStatus) {
-        log.info("GET /users/{}/requests/allWithStatus?RequestStatus={} Event list: {}", userId, requestStatus, eventIds);
-        return requestService.getAllByEventIdInAndStatus(1L, eventIds, requestStatus).stream()
-                .map(RequestMapper::toDto)
+        log.info("GET /users/requests/allWithStatus?RequestStatus={} Event list: {}", requestStatus, eventIds);
+        return requestService.getAllByEventIdInAndStatus(eventIds, requestStatus).stream()
+                .map(RequestMapper.INSTANCE::toDto)
                 .collect(Collectors.toList());
     }
 }

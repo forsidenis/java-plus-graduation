@@ -1,7 +1,9 @@
 package ru.practicum.event.mapper;
 
-import lombok.AccessLevel;
-import lombok.NoArgsConstructor;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.factory.Mappers;
 import ru.practicum.dto.compilationDto.CompilationDto;
 import ru.practicum.dto.compilationDto.NewCompilationDto;
 import ru.practicum.dto.compilationDto.UpdateCompilationRequest;
@@ -9,38 +11,23 @@ import ru.practicum.dto.eventDto.EventShortDto;
 import ru.practicum.event.model.Compilation;
 import ru.practicum.event.model.Event;
 
-import java.util.Collections;
 import java.util.List;
 
-@NoArgsConstructor(access = AccessLevel.PRIVATE)
-public class CompilationMapper {
+@Mapper
+public interface CompilationMapper {
+    CompilationMapper INSTANCE = Mappers.getMapper(CompilationMapper.class);
 
-    public static CompilationDto toDto(Compilation compilation, List<EventShortDto> eventShortDtos) {
-        return CompilationDto.builder()
-                .id(compilation.getId())
-                .title(compilation.getTitle())
-                .pinned(compilation.getPinned())
-                .events(eventShortDtos != null ? eventShortDtos : Collections.emptyList())
-                .build();
-    }
+    @Mapping(target = "events", source = "eventShortDtos")
+    CompilationDto toDto(Compilation compilation, List<EventShortDto> eventShortDtos);
 
-    public static Compilation toEntity(NewCompilationDto dto, List<Event> events) {
-        return Compilation.builder()
-                .title(dto.getTitle())
-                .pinned(dto.getPinned() != null ? dto.getPinned() : false)
-                .events(events != null ? events : Collections.emptyList())
-                .build();
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "events", source = "eventList")
+    @Mapping(target = "pinned", source = "dto.pinned", defaultValue = "false")
+    Compilation toEntity(NewCompilationDto dto, List<Event> eventList);
 
-    public static void updateEntity(Compilation compilation, UpdateCompilationRequest request, List<Event> events) {
-        if (request.getTitle() != null) {
-            compilation.setTitle(request.getTitle());
-        }
-        if (request.getPinned() != null) {
-            compilation.setPinned(request.getPinned());
-        }
-        if (events != null) {
-            compilation.setEvents(events);
-        }
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "title", source = "request.title")
+    @Mapping(target = "pinned", source = "request.pinned")
+    @Mapping(target = "events", source = "events")
+    void updateEntity(@MappingTarget Compilation compilation, UpdateCompilationRequest request, List<Event> events);
 }

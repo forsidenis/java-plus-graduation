@@ -27,8 +27,7 @@ public class AdminUserController {
     public UserDto saveUser(@Valid @RequestBody NewUserRequest request) {
         log.info("POST /admin/users - Создание пользователя: {}", request);
         User user = userService.saveUser(request);
-        return UserMapper.toDto(user);
-
+        return UserMapper.INSTANCE.toDto(user);
     }
 
     @GetMapping
@@ -38,7 +37,7 @@ public class AdminUserController {
         log.info("GET /admin/users - Получение списка пользователей: ids {}, from {}, size {}", ids, from, size);
         return userService.getUsers(ids, from, size)
                 .stream()
-                .map(UserMapper::toDto)
+                .map(UserMapper.INSTANCE::toDto)
                 .toList();
     }
 
@@ -47,16 +46,15 @@ public class AdminUserController {
         log.info("GET /admin/users/allUsersById - Получение списка пользователей: ids {}", ids);
         return userService.getAllUsersById(ids)
                 .stream()
-                .map(UserMapper::toDto)
+                .map(UserMapper.INSTANCE::toDto)
                 .toList();
     }
 
     @GetMapping("/{userId}")
     public UserDto getUser(@PathVariable("userId") Long userId) {
         log.info("GET /admin/users/{userId} - Получение пользователя: id {}", userId);
-        return UserMapper.toDto(userService.getUser(userId));
+        return UserMapper.INSTANCE.toDto(userService.getUser(userId));
     }
-
 
     @DeleteMapping("/{userId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)

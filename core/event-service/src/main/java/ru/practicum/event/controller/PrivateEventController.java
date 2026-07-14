@@ -20,8 +20,8 @@ import ru.practicum.dto.userDto.UserShortDto;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.service.PrivateEventService;
-import ru.practicum.faign.RequestServiceFeign;
-import ru.practicum.faign.UserServiceFeign;
+import ru.practicum.feign.RequestServiceFeign;
+import ru.practicum.feign.UserServiceFeign;
 
 import java.util.List;
 import java.util.Map;
@@ -47,7 +47,7 @@ public class PrivateEventController {
         UserDto user = userServiceFeign.getUser(userId);
         Event event = privateEventService.createEvent(userId, dto, user);
 
-        return EventMapper.toFullDto(event, 0L, 0L,
+        return EventMapper.INSTANCE.toFullDto(event, 0L, 0L,
                 new UserShortDto(user.getId(), user.getName()));
     }
 
@@ -74,7 +74,7 @@ public class PrivateEventController {
                 .map(event -> {
                     Long confirmedRequests = confirmedMap.getOrDefault(event.getId(), 0L);
                     Long views = viewsMap.getOrDefault(event.getId(), 0L);
-                    return EventMapper.toShortDto(event, confirmedRequests, views, initiator);
+                    return EventMapper.INSTANCE.toShortDto(event, confirmedRequests, views, initiator);
                 })
                 .collect(Collectors.toList());
     }
@@ -91,7 +91,7 @@ public class PrivateEventController {
 
         Long views = privateEventService.getViewsForEvent(event);
 
-        return EventMapper.toFullDto(event, confirmedRequests, views,
+        return EventMapper.INSTANCE.toFullDto(event, confirmedRequests, views,
                 new UserShortDto(user.getId(), user.getName()));
     }
 
@@ -108,7 +108,7 @@ public class PrivateEventController {
 
         Long views = privateEventService.getViewsForEvent(event);
 
-        return EventMapper.toFullDto(event, confirmedRequests, views,
+        return EventMapper.INSTANCE.toFullDto(event, confirmedRequests, views,
                 new UserShortDto(user.getId(), user.getName()));
     }
 
@@ -129,7 +129,7 @@ public class PrivateEventController {
 
 
     private Long getConfirmedRequestsCount(Long eventId) {
-        return (long) requestServiceFeign.getAllByEventIdInAndStatus(1L, List.of(eventId), RequestStatus.CONFIRMED).size();
+        return (long) requestServiceFeign.getAllByEventIdInAndStatus(List.of(eventId), RequestStatus.CONFIRMED).size();
     }
 
     private Map<Long, Long> getConfirmedRequestsCounts(List<Event> events) {
@@ -142,7 +142,7 @@ public class PrivateEventController {
                 .collect(Collectors.toList());
 
         return requestServiceFeign
-                .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
+                .getAllByEventIdInAndStatus(eventIds, RequestStatus.CONFIRMED)
                 .stream()
                 .collect(Collectors.groupingBy(
                         ParticipationRequestDto::getEvent,
