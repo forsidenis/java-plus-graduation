@@ -20,8 +20,8 @@ import ru.practicum.dto.userDto.UserShortDto;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.service.PrivateEventService;
-import ru.practicum.faign.RequestServiceFeign;
-import ru.practicum.faign.UserServiceFeign;
+import ru.practicum.feign.RequestServiceFeign;
+import ru.practicum.feign.UserServiceFeign;
 
 import java.util.List;
 import java.util.Map;
