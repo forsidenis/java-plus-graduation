@@ -17,8 +17,8 @@ import ru.practicum.dto.userDto.UserShortDto;
 import ru.practicum.event.mapper.EventMapper;
 import ru.practicum.event.model.Event;
 import ru.practicum.event.service.AdminEventService;
-import ru.practicum.feign.RequestServiceFeign;
-import ru.practicum.feign.UserServiceFeign;
+import ru.practicum.faign.RequestServiceFeign;
+import ru.practicum.faign.UserServiceFeign;
 
 import java.time.LocalDateTime;
 import java.util.List;

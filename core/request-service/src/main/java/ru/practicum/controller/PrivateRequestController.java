@@ -12,8 +12,8 @@ import ru.practicum.dto.requestDto.EventRequestStatusUpdateResult;
 import ru.practicum.dto.requestDto.ParticipationRequestDto;
 import ru.practicum.dto.requestDto.RequestStatus;
 import ru.practicum.dto.userDto.UserDto;
-import ru.practicum.feign.EventServiceFeign;
-import ru.practicum.feign.UserServiceFeign;
+import ru.practicum.faign.EventServiceFeign;
+import ru.practicum.faign.UserServiceFeign;
 import ru.practicum.mapper.RequestMapper;
 import ru.practicum.model.ParticipationRequest;
 import ru.practicum.service.RequestService;
@@ -89,7 +89,7 @@ public class PrivateRequestController {
     }
 
     @GetMapping("/{eventId}")
-    public boolean confirmUserRegisterOnEvent(@PathVariable @Positive Long userId,
+    boolean confirmUserRegisterOnEvent(@PathVariable @Positive Long userId,
                                        @PathVariable @Positive Long eventId,
                                        @RequestParam("status") RequestStatus requestStatus) {
         log.info("GET /users/{}/events/{}?RequestStatus={}", userId, eventId, requestStatus);
@@ -97,7 +97,7 @@ public class PrivateRequestController {
     }
 
     @GetMapping("/allWithStatus/list")
-    public List<ParticipationRequestDto> getAllByEventIdInAndStatus(
+    List<ParticipationRequestDto> getAllByEventIdInAndStatus(
             @PathVariable Long userId,
             @RequestParam("eventIds") List<Long> eventIds,
             @RequestParam("status") RequestStatus requestStatus) {
