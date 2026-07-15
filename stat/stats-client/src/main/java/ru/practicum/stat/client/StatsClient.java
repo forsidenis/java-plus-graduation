@@ -50,6 +50,7 @@ public class StatsClient {
 
     public List<ViewStatsDto> getStats(LocalDateTime start, LocalDateTime end,
                                        List<String> uris, Boolean unique) {
+
         String baseUrl = getServiceUrl();
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl + "/stats")
                 .queryParam("start", start.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")))
