@@ -20,8 +20,7 @@ import ru.practicum.event.service.PrivateEventService;
 import ru.practicum.exception.ConditionsNotMetException;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
-import ru.practicum.stat.client.StatsClient;
-import ru.practicum.stat.dto.ViewStatsDto;
+import ru.practicum.RecommendationGrpcClient;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,7 +35,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
-    private final StatsClient statsClient;
+    private final RecommendationGrpcClient recommendationGrpcClient;
 
     @Override
     @Transactional
@@ -83,31 +82,31 @@ public class PrivateEventServiceImpl implements PrivateEventService {
     }
 
     @Override
-    public Long getViewsForEvent(Event event) {
-        if (event == null) return 0L;
-        LocalDateTime start = event.getPublishedOn() != null ? event.getPublishedOn() : event.getCreatedOn();
-        if (start == null) start = LocalDateTime.now().minusYears(10);
-        List<ViewStatsDto> stats = statsClient.getStats(start, LocalDateTime.now(), List.of("/events/" + event.getId()), true);
-        return stats.isEmpty() ? 0L : stats.getFirst().getHits();
+    public Double getRatingForEvent(Event event) {
+        if (event == null) return 0.0;
+        List<Long> eventIds = List.of(event.getId());
+        var protoList = recommendationGrpcClient.getInteractionsCount(eventIds);
+        return protoList.isEmpty() ? 0.0 : protoList.get(0).getScore();
     }
 
     @Override
-    public Map<Long, Long> getViewsForEvents(List<Event> events) {
+    public Map<Long, Double> getRatingsForEvents(List<Event> events) {
         if (events == null || events.isEmpty()) return Map.of();
-        LocalDateTime earliest = events.stream()
-                .map(e -> e.getPublishedOn() != null ? e.getPublishedOn() : e.getCreatedOn())
-                .min(LocalDateTime::compareTo)
-                .orElse(LocalDateTime.now().minusYears(10));
-        List<String> uris = events.stream().map(e -> "/events/" + e.getId()).toList();
-        List<ViewStatsDto> stats = statsClient.getStats(earliest, LocalDateTime.now(), uris, false);
-        return stats.stream()
-                .collect(Collectors.toMap(
-                        v -> Long.parseLong(v.getUri().substring(v.getUri().lastIndexOf('/') + 1)),
-                        ViewStatsDto::getHits,
-                        (a, b) -> a
-                ));
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+        try {
+            var protoList = recommendationGrpcClient.getInteractionsCount(eventIds);
+            return protoList.stream()
+                    .collect(Collectors.toMap(
+                            proto -> proto.getEventId(),
+                            proto -> proto.getScore()
+                    ));
+        } catch (Exception e) {
+            log.warn("Не удалось получить рейтинги для событий: {}", e.getMessage());
+            return Map.of();
+        }
     }
 
+    // Приватные методы
     private void validateEventDate(LocalDateTime eventDate) {
         if (eventDate.isBefore(LocalDateTime.now().plusHours(2))) {
             throw new ConditionsNotMetException("Дата события должна быть не ранее чем через 2 часа от текущего момента");

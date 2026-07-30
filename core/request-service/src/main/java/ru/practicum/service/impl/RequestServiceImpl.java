@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.RecommendationGrpcClient; // правильный импорт
 import ru.practicum.dto.eventDto.EventFullDto;
 import ru.practicum.dto.eventDto.EventState;
 import ru.practicum.dto.requestDto.EventRequestStatusUpdateRequest;
@@ -17,6 +18,7 @@ import ru.practicum.mapper.RequestMapper;
 import ru.practicum.model.ParticipationRequest;
 import ru.practicum.repository.RequestRepository;
 import ru.practicum.service.RequestService;
+import ru.practicum.ewm.stats.avro.ActionTypeAvro;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +31,7 @@ import java.util.stream.Collectors;
 public class RequestServiceImpl implements RequestService {
 
     private final RequestRepository requestRepository;
+    private final RecommendationGrpcClient recommendationGrpcClient;
 
     @Override
     public List<ParticipationRequest> getUserRequests(Long userId) {
@@ -42,8 +45,7 @@ public class RequestServiceImpl implements RequestService {
         log.info("Создание заявки от пользователя {} на событие {}", userId, eventId);
 
         if (event.getInitiator().getId().equals(userId)) {
-            throw new ConflictException("Инициатор события не может добавить запрос " +
-                    "на участие в своём событии");
+            throw new ConflictException("Инициатор события не может добавить запрос на участие в своём событии");
         }
 
         if (event.getState() != EventState.PUBLISHED) {
@@ -70,6 +72,15 @@ public class RequestServiceImpl implements RequestService {
 
         request = requestRepository.save(request);
         log.info("Заявка создана с id: {}", request.getId());
+
+        // Отправка регистрации в Collector
+        try {
+            recommendationGrpcClient.sendUserAction(userId, eventId, ActionTypeAvro.REGISTER, System.currentTimeMillis());
+            log.info("Отправлено событие REGISTER для пользователя {} на мероприятие {}", userId, eventId);
+        } catch (Exception e) {
+            log.error("Ошибка при отправке регистрации в Collector: {}", e.getMessage(), e);
+        }
+
         return request;
     }
 

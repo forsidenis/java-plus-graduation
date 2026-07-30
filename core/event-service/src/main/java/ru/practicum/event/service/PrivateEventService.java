@@ -18,7 +18,7 @@ public interface PrivateEventService {
 
     Event updateUserEvent(Long userId, Long eventId, UpdateEventUserRequest dto);
 
-    Long getViewsForEvent(Event event);
+    Double getRatingForEvent(Event event);
 
-    Map<Long, Long> getViewsForEvents(List<Event> events);
+    Map<Long, Double> getRatingsForEvents(List<Event> events);
 }

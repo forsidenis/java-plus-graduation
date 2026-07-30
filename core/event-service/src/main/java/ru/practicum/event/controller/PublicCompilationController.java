@@ -54,16 +54,17 @@ public class PublicCompilationController {
     private CompilationDto buildCompilationDto(Compilation compilation) {
         List<Event> events = compilation.getEvents();
 
-        Map<Long, Long> viewsMap = publicCompilationService.getViewsForEvents(events);
+        // Используем getRatingsForEvents вместо getViewsForEvents
+        Map<Long, Double> ratingMap = publicCompilationService.getRatingsForEvents(events);
         Map<Long, Long> confirmedMap = getConfirmedRequestsCounts(events);
         Map<Long, UserShortDto> initiatorMap = getEventInitiators(events);
 
         List<EventShortDto> eventShortDtos = events.stream()
                 .map(event -> {
                     Long confirmed = confirmedMap.getOrDefault(event.getId(), 0L);
-                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
+                    Double rating = ratingMap.getOrDefault(event.getId(), 0.0);
                     UserShortDto initiator = initiatorMap.get(event.getInitiatorId());
-                    return EventMapper.toShortDto(event, confirmed, views, initiator);
+                    return EventMapper.toShortDto(event, confirmed, rating, initiator);
                 })
                 .collect(Collectors.toList());
 

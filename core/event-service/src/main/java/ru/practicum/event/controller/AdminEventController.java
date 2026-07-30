@@ -67,12 +67,15 @@ public class AdminEventController {
 
         Map<Long, Long> confirmedMap = getConfirmedRequestsCounts(events);
 
+        // Получаем рейтинги через сервис
+        Map<Long, Double> ratingMap = adminEventService.getRatingsForEvents(events); // нужно добавить метод в сервис
+
         return events.stream()
                 .map(event -> {
                     Long confirmedRequests = confirmedMap.getOrDefault(event.getId(), 0L);
-                    Long views = adminEventService.getViewsForEvent(event);
+                    Double rating = ratingMap.getOrDefault(event.getId(), 0.0);
                     UserShortDto initiator = userShortMap.get(event.getInitiatorId());
-                    return EventMapper.toFullDto(event, confirmedRequests, views, initiator);
+                    return EventMapper.toFullDto(event, confirmedRequests, rating, initiator);
                 })
                 .collect(Collectors.toList());
     }
@@ -88,9 +91,9 @@ public class AdminEventController {
         UserShortDto userShortDto = new UserShortDto(user.getId(), user.getName());
 
         Long confirmedRequests = getConfirmedRequestsCount(eventId);
-        Long views = adminEventService.getViewsForEvent(updatedEvent);
+        Double rating = adminEventService.getRatingForEvent(updatedEvent);
 
-        return EventMapper.toFullDto(updatedEvent, confirmedRequests, views, userShortDto);
+        return EventMapper.toFullDto(updatedEvent, confirmedRequests, rating, userShortDto);
     }
 
     private Long getConfirmedRequestsCount(Long eventId) {
@@ -101,11 +104,9 @@ public class AdminEventController {
         if (events == null || events.isEmpty()) {
             return Map.of();
         }
-
         List<Long> eventIds = events.stream()
                 .map(Event::getId)
                 .collect(Collectors.toList());
-
         return requestServiceFeign
                 .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
                 .stream()

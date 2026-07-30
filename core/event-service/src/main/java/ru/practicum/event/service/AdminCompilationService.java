@@ -15,5 +15,5 @@ public interface AdminCompilationService {
 
     Compilation updateCompilation(Long compId, UpdateCompilationRequest request);
 
-    Map<Long, Long> getViewsForEvents(List<Event> events);
+    Map<Long, Double> getRatingsForEvents(List<Event> events);
 }

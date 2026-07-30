@@ -11,5 +11,5 @@ public interface PublicCompilationService {
 
     Compilation getCompilationById(Long compId);
 
-    Map<Long, Long> getViewsForEvents(List<Event> events);
+    Map<Long, Double> getRatingsForEvents(List<Event> events);
 }
