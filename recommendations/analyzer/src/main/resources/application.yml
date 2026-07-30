@@ -16,13 +16,14 @@ spring:
         useRandomPolicy: true
         max-interval: 6000
   datasource:
-    url: jdbc:postgresql://localhost:5432/analyzer
-    username: analyzer
-    password: analyzer
-    driver-class-name: org.postgresql.Driver
+    url: jdbc:h2:mem:analyzer;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
   jpa:
     hibernate:
       ddl-auto: update
+    database-platform: org.hibernate.dialect.H2Dialect
   kafka:
     bootstrap-servers: localhost:9092
     consumer:
@@ -48,3 +49,9 @@ eureka:
     leaseRenewalIntervalInSeconds: 10
     metadata-map:
       grpcPort: ${grpc.server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
