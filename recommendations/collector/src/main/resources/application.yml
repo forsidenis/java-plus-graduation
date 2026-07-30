@@ -12,6 +12,7 @@ spring:
     import: "configserver:"
   cloud:
     config:
+      fail-fast: true
       discovery:
         enabled: true
         serviceId: config-server
@@ -37,3 +38,9 @@ eureka:
     leaseRenewalIntervalInSeconds: 10
     metadata-map:
       grpcPort: ${grpc.server.port}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
