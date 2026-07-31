@@ -4,6 +4,9 @@ server:
 spring:
   application:
     name: aggregator
+  cloud:
+    config:
+      enabled: false
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration
