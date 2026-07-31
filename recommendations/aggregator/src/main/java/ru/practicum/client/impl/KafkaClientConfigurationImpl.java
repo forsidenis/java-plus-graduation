@@ -48,10 +48,18 @@ public class KafkaClientConfigurationImpl implements ClientConfiguration {
     @Override
     public void stop() {
         if (consumer != null) {
-            try { consumer.close(); } catch (Exception e) { log.warn("Ошибка при закрытии consumer", e); }
+            try {
+                consumer.close();
+            } catch (Exception e) {
+                log.warn("Ошибка при закрытии consumer", e);
+            }
         }
         if (producer != null) {
-            try { producer.close(); } catch (Exception e) { log.warn("Ошибка при закрытии producer", e); }
+            try {
+                producer.close();
+            } catch (Exception e) {
+                log.warn("Ошибка при закрытии producer", e);
+            }
         }
     }
 

@@ -29,7 +29,6 @@ public class AggregationStarter {
 
     public void start() {
         log.info("Запуск AggregationStarter...");
-
         while (true) {
             try {
                 client.getConsumer().subscribe(List.of("stats.user-actions.v1"));
