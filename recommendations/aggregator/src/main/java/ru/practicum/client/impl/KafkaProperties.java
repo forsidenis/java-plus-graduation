@@ -8,11 +8,8 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "kafka")
 public class KafkaProperties {
-
     private String bootstrapServers;
-
     private ConsumerConfig consumer = new ConsumerConfig();
-
     private ProducerConfig producer = new ProducerConfig();
 
     @Data

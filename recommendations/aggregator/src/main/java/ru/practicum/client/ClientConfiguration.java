@@ -6,7 +6,6 @@ import org.apache.kafka.clients.producer.Producer;
 import ru.practicum.ewm.stats.avro.UserActionAvro;
 
 public interface ClientConfiguration {
-
     Producer<String, SpecificRecordBase> getProducer();
 
     Consumer<String, UserActionAvro> getConsumer();

@@ -29,13 +29,14 @@ public class AggregationStarter {
 
     public void start() {
         log.info("Запуск AggregationStarter...");
+
         while (true) {
             try {
                 client.getConsumer().subscribe(List.of("stats.user-actions.v1"));
-                log.info("Подписка на топик выполнена");
+                log.info("Подписка на топик stats.user-actions.v1 выполнена");
                 break;
             } catch (Exception e) {
-                log.warn("Ошибка при подключении к Kafka: {}, повтор через 5 секунд", e.getMessage());
+                log.warn("Ошибка при подключении к Kafka: {}", e.getMessage());
                 try {
                     Thread.sleep(5000);
                 } catch (InterruptedException ignored) {
@@ -51,7 +52,7 @@ public class AggregationStarter {
                 try {
                     records = client.getConsumer().poll(Duration.ofSeconds(1));
                 } catch (Exception e) {
-                    log.warn("Ошибка при опросе Kafka: {}, продолжаем", e.getMessage());
+                    log.warn("Ошибка при опросе Kafka: {}", e.getMessage());
                     try {
                         Thread.sleep(1000);
                     } catch (InterruptedException ignored) {
@@ -67,16 +68,14 @@ public class AggregationStarter {
             }
         } catch (WakeupException ignored) {
         } catch (Exception e) {
-            log.error("Ошибка во время обработки событий", e);
+            log.error("Критическая ошибка в цикле обработки", e);
         } finally {
             closeResources();
         }
     }
 
     private void processUserAction(UserActionAvro data) {
-        log.info("------------------------------");
-        log.info("Получены данные: {}", data);
-
+        log.debug("Обработка действия: {}", data);
         long eventId = data.getEventId();
         long userId = data.getUserId();
 
@@ -84,7 +83,7 @@ public class AggregationStarter {
         double newWeight = computeWeightActionType(data.getActionType());
 
         if (newWeight <= oldWeight) {
-            log.info("Новый вес {} не превышает старый {}, пересчет не требуется", newWeight, oldWeight);
+            log.debug("Новый вес {} не превышает старый {}, пересчет не требуется", newWeight, oldWeight);
             return;
         }
 
@@ -99,82 +98,54 @@ public class AggregationStarter {
     }
 
     private void updateUserWeight(long eventId, long userId, double newWeight) {
-        eventUserActionMatrix
-                .computeIfAbsent(eventId, k -> new HashMap<>())
-                .put(userId, newWeight);
-        log.info("Обновлена матрица действий пользователя для события {}: пользователь {} -> вес {}",
-                eventId, userId, newWeight);
+        eventUserActionMatrix.computeIfAbsent(eventId, k -> new HashMap<>()).put(userId, newWeight);
+        log.debug("Обновлен вес: event={}, user={}, weight={}", eventId, userId, newWeight);
     }
 
     private void updateEventSum(long eventId, double oldWeight, double newWeight) {
-        double deltaEvent = newWeight - oldWeight;
-        double currentEventSum = eventSumValue.getOrDefault(eventId, 0.0);
-        double newEventSum = currentEventSum + deltaEvent;
-        eventSumValue.put(eventId, newEventSum);
-        log.info("Обновлена сумма весов для события {}: {} -> {}",
-                eventId, currentEventSum, newEventSum);
+        double delta = newWeight - oldWeight;
+        eventSumValue.merge(eventId, delta, Double::sum);
+        log.debug("Обновлена сумма для event {}: {}", eventId, eventSumValue.get(eventId));
     }
 
     private void recalculateSimilarities(long eventId, long userId, double oldWeight, double newWeight) {
         for (long otherEventId : eventSumValue.keySet()) {
-            if (otherEventId == eventId) {
-                continue;
-            }
-
+            if (otherEventId == eventId) continue;
             double otherUserWeight = getUserWeight(otherEventId, userId);
+            if (otherUserWeight == 0.0) continue;
 
-            if (otherUserWeight == 0.0) {
-                continue;
-            }
+            long first = Math.min(eventId, otherEventId);
+            long second = Math.max(eventId, otherEventId);
 
-            long firstKey = Math.min(eventId, otherEventId);
-            long secondKey = Math.max(eventId, otherEventId);
+            double sumFirst = eventSumValue.getOrDefault(first, 0.0);
+            double sumSecond = eventSumValue.getOrDefault(second, 0.0);
+            if (sumFirst <= 0 || sumSecond <= 0) continue;
 
-            double sumFirst = getEventSum(firstKey);
-            double sumSecond = getEventSum(secondKey);
+            double minOld = Math.min(oldWeight, otherUserWeight);
+            double minNew = Math.min(newWeight, otherUserWeight);
+            double deltaMin = minNew - minOld;
 
-            if (sumFirst <= 0 || sumSecond <= 0) {
-                continue;
-            }
+            double currentMinSum = minWeightsSums.computeIfAbsent(first, k -> new HashMap<>()).getOrDefault(second, 0.0);
+            double updatedMinSum = currentMinSum + deltaMin;
+            minWeightsSums.get(first).put(second, updatedMinSum);
 
-            double minValue = Math.min(newWeight, otherUserWeight);
-            double currentMinSum = getMinSum(firstKey, secondKey);
-            double updatedMinSum = currentMinSum + (minValue - Math.min(oldWeight, otherUserWeight));
-
-            minWeightsSums
-                    .computeIfAbsent(firstKey, k -> new HashMap<>())
-                    .put(secondKey, updatedMinSum);
-
-            log.info("Обновлена S_min для пары ({}, {}): {}", firstKey, secondKey, updatedMinSum);
-            sendSimilarityEvent(firstKey, secondKey, updatedMinSum, sumFirst, sumSecond);
+            sendSimilarityEvent(first, second, updatedMinSum, sumFirst, sumSecond);
         }
     }
 
-    private double getEventSum(long eventId) {
-        return eventSumValue.getOrDefault(eventId, 0.0);
-    }
-
-    private double getMinSum(long firstKey, long secondKey) {
-        Map<Long, Double> innerMap = minWeightsSums.get(firstKey);
-        return innerMap != null ? innerMap.getOrDefault(secondKey, 0.0) : 0.0;
-    }
-
-    private void sendSimilarityEvent(long firstKey, long secondKey, double minSum,
-                                     double sumFirst, double sumSecond) {
+    private void sendSimilarityEvent(long first, long second, double minSum, double sumFirst, double sumSecond) {
         double similarity = minSum / (Math.sqrt(sumFirst) * Math.sqrt(sumSecond));
-
         EventSimilarityAvro avro = EventSimilarityAvro.newBuilder()
-                .setEventA((int) firstKey)
-                .setEventB((int) secondKey)
+                .setEventA((int) first)
+                .setEventB((int) second)
                 .setScore(similarity)
                 .setTimestamp(Instant.now())
                 .build();
-
         try {
             client.getProducer().send(new ProducerRecord<>("stats.events-similarity.v1", avro));
-            log.info("Отправлено сходство для пары ({}, {}): {}", firstKey, secondKey, similarity);
+            log.info("Отправлено сходство {} для пары ({}, {})", similarity, first, second);
         } catch (Exception e) {
-            log.error("Ошибка отправки в Kafka: {}", e.getMessage());
+            log.error("Ошибка отправки в Kafka", e);
         }
     }
 
@@ -191,9 +162,8 @@ public class AggregationStarter {
             client.getProducer().flush();
             client.getConsumer().commitSync();
         } catch (Exception e) {
-            log.warn("Ошибка при закрытии ресурсов: {}", e.getMessage());
+            log.warn("Ошибка при закрытии ресурсов", e);
         } finally {
-            log.info("Закрываем консьюмер и продюсер");
             client.stop();
         }
     }
