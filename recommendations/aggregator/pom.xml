@@ -13,7 +13,7 @@
     <artifactId>aggregator</artifactId>
 
     <dependencies>
-        <!-- ===== SPRING CLOUD ===== -->
+        <!-- SPRING CLOUD -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-config</artifactId>
@@ -23,39 +23,39 @@
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
 
-        <!-- ===== RETRY ===== -->
+        <!-- RETRY -->
         <dependency>
             <groupId>org.springframework.retry</groupId>
             <artifactId>spring-retry</artifactId>
         </dependency>
 
-        <!-- ===== KAFKA ===== -->
+        <!-- KAFKA -->
         <dependency>
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
         </dependency>
 
-        <!-- ===== AVRO ===== -->
+        <!-- AVRO -->
         <dependency>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
             <version>${avro.version}</version>
         </dependency>
 
-        <!-- ===== MONITORING ===== -->
+        <!-- MONITORING -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- ===== UTILITIES ===== -->
+        <!-- UTILITIES -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
 
-        <!-- ===== INTERNAL MODULES ===== -->
+        <!-- INTERNAL MODULES -->
         <dependency>
             <groupId>ru.practicum</groupId>
             <artifactId>recommendation-common</artifactId>
@@ -80,7 +80,6 @@
                     </execution>
                 </executions>
             </plugin>
-
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>

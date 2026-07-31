@@ -28,8 +28,10 @@ public class AggregationStarter {
     private final Map<Long, Map<Long, Double>> minWeightsSums = new HashMap<>();
 
     public void start() {
+        log.info("AggregationStarter started");
         try {
             client.getConsumer().subscribe(List.of("stats.user-actions.v1"));
+            log.info("Subscribed to topic stats.user-actions.v1");
 
             while (true) {
                 ConsumerRecords<String, UserActionAvro> records =
@@ -40,15 +42,15 @@ public class AggregationStarter {
                 }
             }
         } catch (WakeupException ignored) {
+            log.info("Consumer wakeup");
         } catch (Exception e) {
-            log.error("Ошибка во время обработки событий от датчиков", e);
+            log.error("Ошибка во время обработки событий", e);
         } finally {
             closeResources();
         }
     }
 
     private void processUserAction(UserActionAvro data) {
-        log.info("------------------------------");
         log.info("Получены данные: {}", data);
 
         long eventId = data.getEventId();
@@ -67,6 +69,9 @@ public class AggregationStarter {
         recalculateSimilarities(eventId, userId, oldWeight, newWeight);
     }
 
+    // остальные методы такие же, как были, только с long
+    // ... (оставляем как в предыдущем исправлении)
+
     private double getUserWeight(long eventId, long userId) {
         Map<Long, Double> userWeights = eventUserActionMatrix.get(eventId);
         return userWeights != null ? userWeights.getOrDefault(userId, 0.0) : 0.0;
@@ -76,7 +81,7 @@ public class AggregationStarter {
         eventUserActionMatrix
                 .computeIfAbsent(eventId, k -> new HashMap<>())
                 .put(userId, newWeight);
-        log.info("Обновлена матрица действий пользователя для события {}: пользователь {} -> вес {}",
+        log.info("Обновлена матрица действий для события {}: пользователь {} -> вес {}",
                 eventId, userId, newWeight);
     }
 
