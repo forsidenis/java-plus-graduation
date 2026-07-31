@@ -11,12 +11,14 @@ import ru.practicum.controller.AggregationStarter;
 @SpringBootApplication
 @EnableDiscoveryClient
 public class Aggregator {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
         log.info("Запуск Aggregator");
         ConfigurableApplicationContext context = SpringApplication.run(Aggregator.class, args);
-        Thread.sleep(5000);
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException ignored) {}
         AggregationStarter aggregator = context.getBean(AggregationStarter.class);
         new Thread(aggregator::start).start();
-        log.info("Aggregator запущен, регистрация в Eureka выполнена");
+        log.info("Aggregator запущен, Kafka-логика в фоне");
     }
 }
