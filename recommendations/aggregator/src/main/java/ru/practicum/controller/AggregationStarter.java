@@ -28,21 +28,44 @@ public class AggregationStarter {
     private final Map<Long, Map<Long, Double>> minWeightsSums = new HashMap<>();
 
     public void start() {
-        log.info("AggregationStarter started");
-        try {
-            client.getConsumer().subscribe(List.of("stats.user-actions.v1"));
-            log.info("Subscribed to topic stats.user-actions.v1");
+        log.info("Запуск AggregationStarter...");
+        while (true) {
+            try {
+                client.getConsumer().subscribe(List.of("stats.user-actions.v1"));
+                log.info("Подписка на топик выполнена");
+                break;
+            } catch (Exception e) {
+                log.warn("Ошибка при подключении к Kafka: {}, повтор через 5 секунд", e.getMessage());
+                try {
+                    Thread.sleep(5000);
+                } catch (InterruptedException ignored) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+            }
+        }
 
+        try {
             while (true) {
-                ConsumerRecords<String, UserActionAvro> records =
-                        client.getConsumer().poll(Duration.ofSeconds(1));
+                ConsumerRecords<String, UserActionAvro> records;
+                try {
+                    records = client.getConsumer().poll(Duration.ofSeconds(1));
+                } catch (Exception e) {
+                    log.warn("Ошибка при опросе Kafka: {}, продолжаем", e.getMessage());
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException ignored) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                    continue;
+                }
 
                 for (ConsumerRecord<String, UserActionAvro> record : records) {
                     processUserAction(record.value());
                 }
             }
         } catch (WakeupException ignored) {
-            log.info("Consumer wakeup");
         } catch (Exception e) {
             log.error("Ошибка во время обработки событий", e);
         } finally {
@@ -51,6 +74,7 @@ public class AggregationStarter {
     }
 
     private void processUserAction(UserActionAvro data) {
+        log.info("------------------------------");
         log.info("Получены данные: {}", data);
 
         long eventId = data.getEventId();
@@ -69,9 +93,6 @@ public class AggregationStarter {
         recalculateSimilarities(eventId, userId, oldWeight, newWeight);
     }
 
-    // остальные методы такие же, как были, только с long
-    // ... (оставляем как в предыдущем исправлении)
-
     private double getUserWeight(long eventId, long userId) {
         Map<Long, Double> userWeights = eventUserActionMatrix.get(eventId);
         return userWeights != null ? userWeights.getOrDefault(userId, 0.0) : 0.0;
@@ -81,7 +102,7 @@ public class AggregationStarter {
         eventUserActionMatrix
                 .computeIfAbsent(eventId, k -> new HashMap<>())
                 .put(userId, newWeight);
-        log.info("Обновлена матрица действий для события {}: пользователь {} -> вес {}",
+        log.info("Обновлена матрица действий пользователя для события {}: пользователь {} -> вес {}",
                 eventId, userId, newWeight);
     }
 
@@ -149,8 +170,12 @@ public class AggregationStarter {
                 .setTimestamp(Instant.now())
                 .build();
 
-        client.getProducer().send(new ProducerRecord<>("stats.events-similarity.v1", avro));
-        log.info("Отправлено сходство для пары ({}, {}): {}", firstKey, secondKey, similarity);
+        try {
+            client.getProducer().send(new ProducerRecord<>("stats.events-similarity.v1", avro));
+            log.info("Отправлено сходство для пары ({}, {}): {}", firstKey, secondKey, similarity);
+        } catch (Exception e) {
+            log.error("Ошибка отправки в Kafka: {}", e.getMessage());
+        }
     }
 
     private double computeWeightActionType(ActionTypeAvro actionType) {
@@ -165,6 +190,8 @@ public class AggregationStarter {
         try {
             client.getProducer().flush();
             client.getConsumer().commitSync();
+        } catch (Exception e) {
+            log.warn("Ошибка при закрытии ресурсов: {}", e.getMessage());
         } finally {
             log.info("Закрываем консьюмер и продюсер");
             client.stop();
