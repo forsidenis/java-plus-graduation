@@ -14,7 +14,6 @@ import ru.practicum.ewm.stats.avro.UserActionAvro;
 import ru.practicum.mapper.UserActionMapper;
 import stats.service.collector.UserActionControllerGrpc;
 import stats.service.collector.UserActionProto;
-import stats.service.collector.ActionTypeProto;
 
 import java.time.Duration;
 
@@ -22,10 +21,25 @@ import java.time.Duration;
 @GrpcService
 public class CollectorController extends UserActionControllerGrpc.UserActionControllerImplBase implements AutoCloseable {
 
-    private final Producer<String, SpecificRecordBase> producer;
+    private final KafkaProducerConfig kafkaProducerConfig;
+    private Producer<String, SpecificRecordBase> producer;
 
     public CollectorController(KafkaProducerConfig kafkaProducerConfig) {
-        this.producer = kafkaProducerConfig.createProducer();
+        this.kafkaProducerConfig = kafkaProducerConfig;
+
+    }
+
+    private synchronized Producer<String, SpecificRecordBase> getProducer() {
+        if (producer == null) {
+            try {
+                producer = kafkaProducerConfig.createProducer();
+                log.info("Kafka producer created successfully");
+            } catch (Exception e) {
+                log.error("Failed to create Kafka producer", e);
+                throw new RuntimeException("Failed to create Kafka producer", e);
+            }
+        }
+        return producer;
     }
 
     @Override
@@ -34,17 +48,20 @@ public class CollectorController extends UserActionControllerGrpc.UserActionCont
         UserActionAvro avro = UserActionMapper.toAvro(proto);
         log.info("Маппинг данных в avro: {}", avro);
         try {
-            producer.send(new ProducerRecord<>("stats.user-actions.v1", avro));
+            getProducer().send(new ProducerRecord<>("stats.user-actions.v1", avro));
             responseObserver.onNext(Empty.getDefaultInstance());
             responseObserver.onCompleted();
         } catch (Exception e) {
+            log.error("Ошибка отправки в Kafka", e);
             responseObserver.onError(new StatusRuntimeException(Status.fromThrowable(e)));
         }
     }
 
     @Override
     public void close() {
-        producer.flush();
-        producer.close(Duration.ofSeconds(10));
+        if (producer != null) {
+            producer.flush();
+            producer.close(Duration.ofSeconds(10));
+        }
     }
 }
