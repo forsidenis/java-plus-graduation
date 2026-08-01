@@ -4,8 +4,6 @@ server:
 spring:
   application:
     name: aggregator
-  main:
-    web-application-type: none
   cloud:
     config:
       enabled: false

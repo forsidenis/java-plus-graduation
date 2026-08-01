@@ -14,11 +14,8 @@ public class Aggregator {
     public static void main(String[] args) {
         log.info("Запуск Aggregator");
         ConfigurableApplicationContext context = SpringApplication.run(Aggregator.class, args);
-        try {
-            Thread.sleep(3000);
-        } catch (InterruptedException ignored) {}
         AggregationStarter aggregator = context.getBean(AggregationStarter.class);
         new Thread(aggregator::start).start();
-        log.info("Aggregator запущен, Kafka-логика в фоне");
+        log.info("Aggregator запущен, регистрация в Eureka продолжается");
     }
 }
