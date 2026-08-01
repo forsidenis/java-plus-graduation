@@ -5,15 +5,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 import org.springframework.data.domain.PageRequest;
-import ru.practicum.ewm.stats.proto.dashboard.InteractionsCountRequestProto;
-import ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto;
-import ru.practicum.ewm.stats.proto.dashboard.RecommendationsControllerGrpc;
-import ru.practicum.ewm.stats.proto.dashboard.SimilarEventsRequestProto;
-import ru.practicum.ewm.stats.proto.dashboard.UserPredictionsRequestProto;
 import ru.practicum.model.EventSimilarity;
 import ru.practicum.model.UserInteraction;
 import ru.practicum.repository.EventSimilarityRepository;
 import ru.practicum.repository.UserInteractionRepository;
+import stats.service.dashboard.InteractionsCountRequestProto;
+import stats.service.dashboard.RecommendedEventProto;
+import stats.service.dashboard.RecommendationsControllerGrpc;
+import stats.service.dashboard.SimilarEventsRequestProto;
+import stats.service.dashboard.UserPredictionsRequestProto;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -32,45 +32,38 @@ public class RecommendationsGrpcService extends RecommendationsControllerGrpc.Re
         long userId = request.getUserId();
         int maxResults = request.getMaxResults();
 
-        // 1. Получаем последние N взаимодействий пользователя (например, 10)
         List<UserInteraction> userInteractions = interactionRepository.findAllByUserId(userId);
         if (userInteractions.isEmpty()) {
             responseObserver.onCompleted();
             return;
         }
 
-        // Сортируем по времени и берём последние 10 (или меньше)
         userInteractions.sort((a, b) -> Long.compare(b.getLastActionAt(), a.getLastActionAt()));
         int limit = Math.min(userInteractions.size(), 10);
         List<UserInteraction> recent = userInteractions.subList(0, limit);
 
-        // Множество событий, с которыми пользователь уже взаимодействовал
         Set<Long> interactedEvents = userInteractions.stream()
                 .map(UserInteraction::getEventId)
                 .collect(Collectors.toSet());
 
-        // Собираем кандидатов: для каждого из recent находим похожие события
         Map<Long, Double> candidateScores = new HashMap<>();
         for (UserInteraction interaction : recent) {
             long eventId = interaction.getEventId();
             List<EventSimilarity> similar = similarityRepository.findTopNByEventId(eventId,
-                    PageRequest.of(0, maxResults * 2)); // побольше, чтобы отфильтровать
+                    PageRequest.of(0, maxResults * 2));
             for (EventSimilarity sim : similar) {
                 long candidateId = (sim.getEventA() == eventId) ? sim.getEventB() : sim.getEventA();
                 if (interactedEvents.contains(candidateId)) continue;
-                // накапливаем сумму сходств (можно усреднить)
                 candidateScores.merge(candidateId, sim.getScore(), Double::sum);
             }
         }
 
-        // Сортируем по убыванию суммы сходств и выбираем top maxResults
         List<Long> sortedCandidates = candidateScores.entrySet().stream()
                 .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
                 .limit(maxResults)
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
 
-        // Для каждого кандидата вычисляем предсказанную оценку (используем взвешенную сумму)
         for (Long candidateId : sortedCandidates) {
             double predictedScore = predictScore(userId, candidateId);
             RecommendedEventProto response = RecommendedEventProto.newBuilder()
@@ -83,13 +76,11 @@ public class RecommendationsGrpcService extends RecommendationsControllerGrpc.Re
     }
 
     private double predictScore(long userId, long candidateId) {
-        // Находим K ближайших соседей (например, 5) из уже оценённых пользователем
         List<UserInteraction> userInteractions = interactionRepository.findAllByUserId(userId);
         Set<Long> interacted = userInteractions.stream()
                 .map(UserInteraction::getEventId)
                 .collect(Collectors.toSet());
 
-        // Для каждого взаимодействия находим сходство с candidateId
         List<Double> similarities = new ArrayList<>();
         List<Double> weights = new ArrayList<>();
         for (Long interactedEvent : interacted) {
@@ -99,7 +90,6 @@ public class RecommendationsGrpcService extends RecommendationsControllerGrpc.Re
             ).orElse(null);
             if (sim != null) {
                 similarities.add(sim.getScore());
-                // вес пользователя для этого события
                 UserInteraction ui = interactionRepository.findByUserIdAndEventId(userId, interactedEvent).orElseThrow();
                 weights.add(ui.getWeight());
             }
@@ -107,7 +97,6 @@ public class RecommendationsGrpcService extends RecommendationsControllerGrpc.Re
 
         if (similarities.isEmpty()) return 0.0;
 
-        // Сортируем по убыванию сходства и берём первые K (5)
         List<Integer> indices = new ArrayList<>();
         for (int i = 0; i < similarities.size(); i++) indices.add(i);
         indices.sort((i1, i2) -> Double.compare(similarities.get(i2), similarities.get(i1)));
@@ -129,12 +118,9 @@ public class RecommendationsGrpcService extends RecommendationsControllerGrpc.Re
         long userId = request.getUserId();
         int maxResults = request.getMaxResults();
 
-        // Получаем все сходства для eventId
         List<EventSimilarity> similarities = similarityRepository.findAllByEventId(eventId);
-        // Сортируем по убыванию score
         similarities.sort((a, b) -> Double.compare(b.getScore(), a.getScore()));
 
-        // Получаем взаимодействия пользователя
         Set<Long> interacted = interactionRepository.findAllByUserId(userId).stream()
                 .map(UserInteraction::getEventId)
                 .collect(Collectors.toSet());

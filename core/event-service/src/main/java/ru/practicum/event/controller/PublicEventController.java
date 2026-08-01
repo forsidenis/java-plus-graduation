@@ -8,6 +8,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.practicum.RecommendationGrpcClient;
 import ru.practicum.dto.eventDto.EventFullDto;
 import ru.practicum.dto.eventDto.EventShortDto;
 import ru.practicum.dto.requestDto.RequestStatus;
@@ -17,9 +18,8 @@ import ru.practicum.event.model.Event;
 import ru.practicum.event.service.PublicEventService;
 import ru.practicum.exception.ConditionsNotMetException;
 import ru.practicum.feign.RequestServiceFeign;
-import ru.practicum.RecommendationGrpcClient;
 import ru.practicum.ewm.stats.avro.ActionTypeAvro;
-import ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto;
+import stats.service.dashboard.RecommendedEventProto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -61,7 +61,6 @@ public class PublicEventController {
                 events.stream().map(Event::getId).toList()
         );
 
-        // Получаем рейтинги через новый клиент
         Map<Long, Double> ratingMap = publicEventService.getRatingsForEvents(events);
 
         Map<Long, UserShortDto> initiatorMap = publicEventService.getEventInitiators(events);
@@ -85,7 +84,6 @@ public class PublicEventController {
 
         Event event = publicEventService.getPublicEventById(id, request);
 
-        // Если userId передан, отправляем просмотр в Collector
         if (userId != null) {
             try {
                 recommendationGrpcClient.sendUserAction(userId, id, ActionTypeAvro.VIEW, System.currentTimeMillis());
@@ -116,10 +114,6 @@ public class PublicEventController {
         return EventMapper.toFullDto(event, confirmedRequests, rating, initiator);
     }
 
-    /**
-     * Эндпоинт для получения рекомендаций для пользователя.
-     * Идентификатор пользователя передаётся в заголовке X-EWM-USER-ID.
-     */
     @GetMapping("/recommendations")
     public List<EventShortDto> getRecommendations(@RequestHeader("X-EWM-USER-ID") Long userId,
                                                   @RequestParam(defaultValue = "10") int maxResults) {
@@ -134,20 +128,16 @@ public class PublicEventController {
                 .map(RecommendedEventProto::getEventId)
                 .collect(Collectors.toList());
 
-        // Получаем события из репозитория (можно через сервис)
         List<Event> events = publicEventService.getEventsByIds(eventIds);
 
-        // Преобразуем в Map eventId -> rating
         Map<Long, Double> ratingMap = recommendations.stream()
                 .collect(Collectors.toMap(
                         RecommendedEventProto::getEventId,
                         RecommendedEventProto::getScore
                 ));
 
-        // Получаем подтверждённые запросы для каждого события
         Map<Long, Long> confirmedMap = publicEventService.getConfirmedRequestsCounts(eventIds);
 
-        // Получаем инициаторов
         Map<Long, UserShortDto> initiatorMap = publicEventService.getEventInitiators(events);
 
         return events.stream()
@@ -160,24 +150,17 @@ public class PublicEventController {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Эндпоинт для лайка события пользователем.
-     * Идентификатор пользователя передаётся в заголовке X-EWM-USER-ID.
-     * Пользователь может лайкнуть только посещённое мероприятие.
-     */
     @PutMapping("/{eventId}/like")
     @ResponseStatus(HttpStatus.OK)
     public void likeEvent(@PathVariable Long eventId,
                           @RequestHeader("X-EWM-USER-ID") Long userId) {
         log.info("PUT /events/{}/like от пользователя {}", eventId, userId);
 
-        // Проверяем, что пользователь участвовал в событии (статус CONFIRMED)
         boolean attended = requestServiceFeign.confirmUserRegisterOnEvent(userId, eventId, RequestStatus.CONFIRMED);
         if (!attended) {
             throw new ConditionsNotMetException("Пользователь не посещал данное мероприятие");
         }
 
-        // Отправляем лайк в Collector
         try {
             recommendationGrpcClient.sendUserAction(userId, eventId, ActionTypeAvro.LIKE, System.currentTimeMillis());
             log.info("Лайк на событие {} от пользователя {} отправлен", eventId, userId);

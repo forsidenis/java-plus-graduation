@@ -6,15 +6,14 @@ import org.slf4j.LoggerFactory;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.stereotype.Component;
 import ru.practicum.ewm.stats.avro.ActionTypeAvro;
-import ru.practicum.ewm.stats.proto.collector.ActionTypeProto;
-import ru.practicum.ewm.stats.proto.collector.Empty;
-import ru.practicum.ewm.stats.proto.collector.UserActionProto;
-import ru.practicum.ewm.stats.proto.collector.UserActionServiceGrpc;
-import ru.practicum.ewm.stats.proto.dashboard.InteractionsCountRequestProto;
-import ru.practicum.ewm.stats.proto.dashboard.RecommendedEventProto;
-import ru.practicum.ewm.stats.proto.dashboard.RecommendationsControllerGrpc;
-import ru.practicum.ewm.stats.proto.dashboard.SimilarEventsRequestProto;
-import ru.practicum.ewm.stats.proto.dashboard.UserPredictionsRequestProto;
+import stats.service.collector.ActionTypeProto;
+import stats.service.collector.UserActionProto;
+import stats.service.collector.UserActionControllerGrpc;
+import stats.service.dashboard.InteractionsCountRequestProto;
+import stats.service.dashboard.RecommendedEventProto;
+import stats.service.dashboard.RecommendationsControllerGrpc;
+import stats.service.dashboard.SimilarEventsRequestProto;
+import stats.service.dashboard.UserPredictionsRequestProto;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -28,7 +27,7 @@ public class RecommendationGrpcClient {
     private static final Logger log = LoggerFactory.getLogger(RecommendationGrpcClient.class);
 
     @GrpcClient("collector")
-    private UserActionServiceGrpc.UserActionServiceBlockingStub collectorStub;
+    private UserActionControllerGrpc.UserActionControllerBlockingStub collectorStub;
 
     @GrpcClient("analyzer")
     private RecommendationsControllerGrpc.RecommendationsControllerBlockingStub analyzerStub;

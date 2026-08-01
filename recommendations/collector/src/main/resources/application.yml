@@ -4,33 +4,23 @@ server:
 grpc:
   server:
     port: 0
+    reflection-service-enabled: true
 
 spring:
   application:
     name: collector
-  config:
-    import: "configserver:"
   cloud:
     config:
-      fail-fast: true
-      discovery:
-        enabled: true
-        serviceId: config-server
-      retry:
-        useRandomPolicy: true
-        max-interval: 6000
-  kafka:
-    bootstrap-servers: localhost:9092
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.LongSerializer
-      value-serializer: io.confluent.kafka.serializers.KafkaAvroSerializer
-      properties:
-        schema.registry.url: http://localhost:8081
+      enabled: false
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration
+      - org.springframework.boot.autoconfigure.r2dbc.R2dbcTransactionManagerAutoConfiguration
 
 eureka:
   client:
     serviceUrl:
-      defaultZone: http://${eureka.instance.hostname:localhost}:${eureka.instance.port:8761}/eureka/
+      defaultZone: http://localhost:8761/eureka/
   instance:
     preferIpAddress: true
     hostname: localhost
@@ -44,3 +34,20 @@ management:
     web:
       exposure:
         include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    ru.practicum: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level --- [%thread] %logger{36} : %msg%n"
+
+kafka:
+  producer:
+    group-id: collector-producer
+    client-id: collector-${random.uuid}
+    bootstrap-servers: localhost:9092
+    key-serializer: org.apache.kafka.common.serialization.StringSerializer
+    value-serializer: serializer.AvroSerializer
