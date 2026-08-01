@@ -39,10 +39,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: gateway,health,info
+        include: health,info
   endpoint:
-    gateway:
-      enabled: true
+    health:
+      show-details: always
 
 logging:
   level:
@@ -53,6 +53,10 @@ logging:
 kafka:
   consumer:
     bootstrap-servers: localhost:9092
+    group-id: analyzer
     auto-offset-reset: earliest
     key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     value-deserializer: deserializer.UserActionDeserializer
+    properties:
+      schema.registry.url: http://localhost:8081
+      specific.avro.reader: true
