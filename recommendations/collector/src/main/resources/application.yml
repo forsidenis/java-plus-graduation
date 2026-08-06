@@ -9,9 +9,16 @@ grpc:
 spring:
   application:
     name: collector
+  config:
+    import: "configserver:"
   cloud:
     config:
-      enabled: false
+      discovery:
+        enabled: true
+        serviceId: config-server
+      retry:
+        useRandomPolicy: true
+        max-interval: 6000
   autoconfigure:
     exclude:
       - org.springframework.boot.autoconfigure.r2dbc.R2dbcAutoConfiguration
@@ -33,10 +40,10 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info
+        include: gateway,health,info
   endpoint:
-    health:
-      show-details: always
+    gateway:
+      enabled: true
 
 logging:
   level:
