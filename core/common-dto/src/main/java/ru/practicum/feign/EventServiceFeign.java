@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import ru.practicum.dto.eventDto.EventFullDto;
 
-@FeignClient(name = "event-service", configuration = FeignConfig.class)
+@FeignClient(name = "event-service", contextId = "eventServiceFeign", configuration = FeignConfig.class)
 public interface EventServiceFeign {
 
     @GetMapping("/events/{id}/WithoutHttp")
