@@ -52,7 +52,7 @@
             <version>${spring-cloud-starter-circuitbreaker-resilience4j.version}</version>
         </dependency>
 
-        <!-- ===== GRPC CLIENT  ===== -->
+        <!-- ===== GRPC CLIENT ===== -->
         <dependency>
             <groupId>net.devh</groupId>
             <artifactId>grpc-client-spring-boot-starter</artifactId>
