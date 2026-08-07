@@ -4,7 +4,6 @@ import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
-import org.springframework.data.domain.PageRequest;
 import ru.practicum.model.EventSimilarity;
 import ru.practicum.model.UserInteraction;
 import ru.practicum.repository.EventSimilarityRepository;
@@ -32,38 +31,54 @@ public class RecommendationsGrpcService extends RecommendationsControllerGrpc.Re
         long userId = request.getUserId();
         int maxResults = request.getMaxResults();
 
+        // Получаем все взаимодействия пользователя
         List<UserInteraction> userInteractions = interactionRepository.findAllByUserId(userId);
         if (userInteractions.isEmpty()) {
             responseObserver.onCompleted();
             return;
         }
 
+        // Сортируем по времени (последние сверху) и берём не более 10 последних
         userInteractions.sort((a, b) -> Long.compare(b.getLastActionAt(), a.getLastActionAt()));
         int limit = Math.min(userInteractions.size(), 10);
         List<UserInteraction> recent = userInteractions.subList(0, limit);
 
+        // Множество событий, с которыми пользователь уже взаимодействовал
         Set<Long> interactedEvents = userInteractions.stream()
                 .map(UserInteraction::getEventId)
                 .collect(Collectors.toSet());
 
+        // За один запрос получаем все сходства для недавних событий
+        List<Long> recentEventIds = recent.stream()
+                .map(UserInteraction::getEventId)
+                .collect(Collectors.toList());
+        List<EventSimilarity> allSimilarities = similarityRepository
+                .findAllByEventIdInOrderByScoreDesc(recentEventIds);
+
+        // Накопление оценок для кандидатов (суммируем score)
         Map<Long, Double> candidateScores = new HashMap<>();
-        for (UserInteraction interaction : recent) {
-            long eventId = interaction.getEventId();
-            List<EventSimilarity> similar = similarityRepository.findTopNByEventId(eventId,
-                    PageRequest.of(0, maxResults * 2));
-            for (EventSimilarity sim : similar) {
-                long candidateId = (sim.getEventA() == eventId) ? sim.getEventB() : sim.getEventA();
-                if (interactedEvents.contains(candidateId)) continue;
-                candidateScores.merge(candidateId, sim.getScore(), Double::sum);
+        for (EventSimilarity sim : allSimilarities) {
+            long eventA = sim.getEventA();
+            long eventB = sim.getEventB();
+            long candidateId;
+            if (interactedEvents.contains(eventA) && !interactedEvents.contains(eventB)) {
+                candidateId = eventB;
+            } else if (interactedEvents.contains(eventB) && !interactedEvents.contains(eventA)) {
+                candidateId = eventA;
+            } else {
+                continue; // оба уже взаимодействовали или оба новые – пропускаем
             }
+            candidateScores.merge(candidateId, sim.getScore(), Double::sum);
         }
 
+        // Сортируем кандидатов по убыванию суммы и выбираем maxResults
         List<Long> sortedCandidates = candidateScores.entrySet().stream()
                 .sorted((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()))
                 .limit(maxResults)
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
 
+        // Для каждого кандидата вычисляем предсказанную оценку и отправляем ответ
         for (Long candidateId : sortedCandidates) {
             double predictedScore = predictScore(userId, candidateId);
             RecommendedEventProto response = RecommendedEventProto.newBuilder()

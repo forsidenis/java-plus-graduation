@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface EventSimilarityRepository extends JpaRepository<EventSimilarity, Long> {
+
     Optional<EventSimilarity> findByEventAAndEventB(Long eventA, Long eventB);
 
     @Query("SELECT s FROM EventSimilarity s WHERE s.eventA = :eventId OR s.eventB = :eventId")
@@ -16,4 +17,7 @@ public interface EventSimilarityRepository extends JpaRepository<EventSimilarity
 
     @Query("SELECT s FROM EventSimilarity s WHERE s.eventA = :eventId OR s.eventB = :eventId ORDER BY s.score DESC")
     List<EventSimilarity> findTopNByEventId(@Param("eventId") Long eventId, org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT s FROM EventSimilarity s WHERE s.eventA IN :eventIds OR s.eventB IN :eventIds ORDER BY s.score DESC")
+    List<EventSimilarity> findAllByEventIdInOrderByScoreDesc(@Param("eventIds") List<Long> eventIds);
 }
