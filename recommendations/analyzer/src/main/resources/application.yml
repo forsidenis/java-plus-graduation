@@ -72,4 +72,3 @@ kafka:
     group-id: analyzer
     auto-offset-reset: earliest
     key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-    value-deserializer: deserializer.UserActionDeserializer

@@ -23,7 +23,7 @@ public class KafkaConsumerService {
     private final UserInteractionRepository userInteractionRepository;
     private final EventSimilarityRepository eventSimilarityRepository;
 
-    @KafkaListener(topics = "stats.user-actions.v1", groupId = "analyzer")
+    @KafkaListener(topics = "stats.user-actions.v1", containerFactory = "userActionKafkaListenerContainerFactory")
     @Transactional
     public void consumeUserAction(UserActionAvro action) {
         long userId = action.getUserId();
@@ -38,7 +38,6 @@ public class KafkaConsumerService {
                 return;
             }
             existing.setWeight(weight);
-            // Преобразуем Instant в миллисекунды
             existing.setLastActionAt(action.getTimestamp().toEpochMilli());
         } else {
             UserInteraction interaction = UserInteraction.builder()
@@ -52,7 +51,7 @@ public class KafkaConsumerService {
         log.info("Обновлено взаимодействие: userId={}, eventId={}, weight={}", userId, eventId, weight);
     }
 
-    @KafkaListener(topics = "stats.events-similarity.v1", groupId = "analyzer")
+    @KafkaListener(topics = "stats.events-similarity.v1", containerFactory = "eventSimilarityKafkaListenerContainerFactory")
     @Transactional
     public void consumeEventSimilarity(EventSimilarityAvro similarity) {
         long eventA = similarity.getEventA();
@@ -63,7 +62,6 @@ public class KafkaConsumerService {
         if (existingOpt.isPresent()) {
             EventSimilarity existing = existingOpt.get();
             existing.setScore(score);
-            // Преобразуем Instant в миллисекунды
             existing.setUpdatedAt(similarity.getTimestamp().toEpochMilli());
         } else {
             EventSimilarity newSim = EventSimilarity.builder()
