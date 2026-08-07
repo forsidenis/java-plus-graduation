@@ -90,8 +90,8 @@ public class PrivateRequestController {
 
     @GetMapping("/{eventId}")
     public boolean confirmUserRegisterOnEvent(@PathVariable @Positive Long userId,
-                                       @PathVariable @Positive Long eventId,
-                                       @RequestParam("status") RequestStatus requestStatus) {
+                                              @PathVariable @Positive Long eventId,
+                                              @RequestParam("status") RequestStatus requestStatus) {
         log.info("GET /users/{}/events/{}?RequestStatus={}", userId, eventId, requestStatus);
         return requestService.confirmUserRegisterOnEvent(userId, eventId, requestStatus);
     }
@@ -102,7 +102,7 @@ public class PrivateRequestController {
             @RequestParam("eventIds") List<Long> eventIds,
             @RequestParam("status") RequestStatus requestStatus) {
         log.info("GET /users/{}/requests/allWithStatus?RequestStatus={} Event list: {}", userId, requestStatus, eventIds);
-        return requestService.getAllByEventIdInAndStatus(1L, eventIds, requestStatus).stream()
+        return requestService.getAllByEventIdInAndStatus(userId, eventIds, requestStatus).stream()
                 .map(RequestMapper::toDto)
                 .collect(Collectors.toList());
     }
