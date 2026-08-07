@@ -20,7 +20,7 @@ spring:
         useRandomPolicy: true
         max-interval: 6000
   datasource:
-    url: jdbc:postgresql://localhost:5432/ewm_analyzer
+    url: jdbc:postgresql://localhost:5470/analyzer_db
     username: analyzer
     password: analyzer
     driver-class-name: org.postgresql.Driver
