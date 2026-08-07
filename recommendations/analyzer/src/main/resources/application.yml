@@ -39,11 +39,15 @@ eureka:
   client:
     serviceUrl:
       defaultZone: http://localhost:8761/eureka/
+    fetch-registry: true
+    register-with-eureka: true
   instance:
     preferIpAddress: true
     hostname: localhost
     instance-id: ${spring.application.name}:${random.value}
     leaseRenewalIntervalInSeconds: 10
+    metadata-map:
+      grpcPort: ${grpc.server.port}
 
 management:
   endpoints:
@@ -53,6 +57,8 @@ management:
   endpoint:
     gateway:
       enabled: true
+    health:
+      show-details: always
 
 logging:
   level:
