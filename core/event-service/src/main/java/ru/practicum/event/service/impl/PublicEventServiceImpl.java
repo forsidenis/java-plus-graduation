@@ -7,6 +7,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import ru.practicum.RecommendationGrpcClient;
 import ru.practicum.dto.eventDto.EventState;
 import ru.practicum.dto.requestDto.RequestStatus;
 import ru.practicum.dto.userDto.UserDto;
@@ -32,6 +33,7 @@ public class PublicEventServiceImpl implements PublicEventService {
     private final EventRepository eventRepository;
     private final RequestServiceFeign requestServiceFeign;
     private final UserServiceFeign userServiceFeign;
+    private final RecommendationGrpcClient recommendationGrpcClient;
 
     @Override
     public List<Event> getPublicEvents(String text, List<Long> categories, Boolean paid,
@@ -66,12 +68,32 @@ public class PublicEventServiceImpl implements PublicEventService {
 
     @Override
     public Double getRatingForEvent(Event event) {
-        return 0.0;
+        if (event == null) return 0.0;
+        List<Long> eventIds = List.of(event.getId());
+        try {
+            var protoList = recommendationGrpcClient.getInteractionsCount(eventIds);
+            return protoList.isEmpty() ? 0.0 : protoList.get(0).getScore();
+        } catch (Exception e) {
+            log.warn("Не удалось получить рейтинг для события {}: {}", event.getId(), e.getMessage());
+            return 0.0;
+        }
     }
 
     @Override
     public Map<Long, Double> getRatingsForEvents(List<Event> events) {
-        return Map.of();
+        if (events == null || events.isEmpty()) return Map.of();
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+        try {
+            var protoList = recommendationGrpcClient.getInteractionsCount(eventIds);
+            return protoList.stream()
+                    .collect(Collectors.toMap(
+                            proto -> proto.getEventId(),
+                            proto -> proto.getScore()
+                    ));
+        } catch (Exception e) {
+            log.warn("Не удалось получить рейтинги для событий: {}", e.getMessage());
+            return Map.of();
+        }
     }
 
     @Override

@@ -6,6 +6,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.RecommendationGrpcClient;
 import ru.practicum.dto.eventDto.EventState;
 import ru.practicum.dto.eventDto.NewEventDto;
 import ru.practicum.dto.eventDto.UpdateEventUserRequest;
@@ -34,6 +35,7 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
+    private final RecommendationGrpcClient recommendationGrpcClient;
 
     @Override
     @Transactional
@@ -81,12 +83,32 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
     @Override
     public Double getRatingForEvent(Event event) {
-        return 0.0;
+        if (event == null) return 0.0;
+        List<Long> eventIds = List.of(event.getId());
+        try {
+            var protoList = recommendationGrpcClient.getInteractionsCount(eventIds);
+            return protoList.isEmpty() ? 0.0 : protoList.get(0).getScore();
+        } catch (Exception e) {
+            log.warn("Не удалось получить рейтинг для события {}: {}", event.getId(), e.getMessage());
+            return 0.0;
+        }
     }
 
     @Override
     public Map<Long, Double> getRatingsForEvents(List<Event> events) {
-        return Map.of();
+        if (events == null || events.isEmpty()) return Map.of();
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+        try {
+            var protoList = recommendationGrpcClient.getInteractionsCount(eventIds);
+            return protoList.stream()
+                    .collect(Collectors.toMap(
+                            proto -> proto.getEventId(),
+                            proto -> proto.getScore()
+                    ));
+        } catch (Exception e) {
+            log.warn("Не удалось получить рейтинги для событий: {}", e.getMessage());
+            return Map.of();
+        }
     }
 
     private void validateEventDate(LocalDateTime eventDate) {

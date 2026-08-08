@@ -118,36 +118,40 @@ public class PublicEventController {
     public List<EventShortDto> getRecommendations(@RequestHeader("X-EWM-USER-ID") Long userId,
                                                   @RequestParam(defaultValue = "10") int maxResults) {
         log.info("GET /events/recommendations для пользователя {}", userId);
+        try {
+            List<RecommendedEventProto> recommendations = recommendationGrpcClient.getRecommendationsForUser(userId, maxResults);
+            if (recommendations.isEmpty()) {
+                return List.of();
+            }
 
-        List<RecommendedEventProto> recommendations = recommendationGrpcClient.getRecommendationsForUser(userId, maxResults);
-        if (recommendations.isEmpty()) {
+            List<Long> eventIds = recommendations.stream()
+                    .map(RecommendedEventProto::getEventId)
+                    .collect(Collectors.toList());
+
+            List<Event> events = publicEventService.getEventsByIds(eventIds);
+
+            Map<Long, Double> ratingMap = recommendations.stream()
+                    .collect(Collectors.toMap(
+                            RecommendedEventProto::getEventId,
+                            RecommendedEventProto::getScore
+                    ));
+
+            Map<Long, Long> confirmedMap = publicEventService.getConfirmedRequestsCounts(eventIds);
+
+            Map<Long, UserShortDto> initiatorMap = publicEventService.getEventInitiators(events);
+
+            return events.stream()
+                    .map(event -> {
+                        Long confirmed = confirmedMap.getOrDefault(event.getId(), 0L);
+                        Double rating = ratingMap.getOrDefault(event.getId(), 0.0);
+                        UserShortDto initiator = initiatorMap.get(event.getInitiatorId());
+                        return EventMapper.toShortDto(event, confirmed, rating, initiator);
+                    })
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Ошибка получения рекомендаций: {}", e.getMessage());
             return List.of();
         }
-
-        List<Long> eventIds = recommendations.stream()
-                .map(RecommendedEventProto::getEventId)
-                .collect(Collectors.toList());
-
-        List<Event> events = publicEventService.getEventsByIds(eventIds);
-
-        Map<Long, Double> ratingMap = recommendations.stream()
-                .collect(Collectors.toMap(
-                        RecommendedEventProto::getEventId,
-                        RecommendedEventProto::getScore
-                ));
-
-        Map<Long, Long> confirmedMap = publicEventService.getConfirmedRequestsCounts(eventIds);
-
-        Map<Long, UserShortDto> initiatorMap = publicEventService.getEventInitiators(events);
-
-        return events.stream()
-                .map(event -> {
-                    Long confirmed = confirmedMap.getOrDefault(event.getId(), 0L);
-                    Double rating = ratingMap.getOrDefault(event.getId(), 0.0);
-                    UserShortDto initiator = initiatorMap.get(event.getInitiatorId());
-                    return EventMapper.toShortDto(event, confirmed, rating, initiator);
-                })
-                .collect(Collectors.toList());
     }
 
     @PutMapping("/{eventId}/like")
