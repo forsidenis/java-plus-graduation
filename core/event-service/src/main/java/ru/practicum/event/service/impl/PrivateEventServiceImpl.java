@@ -20,7 +20,6 @@ import ru.practicum.event.service.PrivateEventService;
 import ru.practicum.exception.ConditionsNotMetException;
 import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
-import ru.practicum.RecommendationGrpcClient;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,7 +34,6 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
-    private final RecommendationGrpcClient recommendationGrpcClient;
 
     @Override
     @Transactional
@@ -83,30 +81,14 @@ public class PrivateEventServiceImpl implements PrivateEventService {
 
     @Override
     public Double getRatingForEvent(Event event) {
-        if (event == null) return 0.0;
-        List<Long> eventIds = List.of(event.getId());
-        var protoList = recommendationGrpcClient.getInteractionsCount(eventIds);
-        return protoList.isEmpty() ? 0.0 : protoList.get(0).getScore();
+        return 0.0;
     }
 
     @Override
     public Map<Long, Double> getRatingsForEvents(List<Event> events) {
-        if (events == null || events.isEmpty()) return Map.of();
-        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
-        try {
-            var protoList = recommendationGrpcClient.getInteractionsCount(eventIds);
-            return protoList.stream()
-                    .collect(Collectors.toMap(
-                            proto -> proto.getEventId(),
-                            proto -> proto.getScore()
-                    ));
-        } catch (Exception e) {
-            log.warn("Не удалось получить рейтинги для событий: {}", e.getMessage());
-            return Map.of();
-        }
+        return Map.of();
     }
 
-    // Приватные методы
     private void validateEventDate(LocalDateTime eventDate) {
         if (eventDate.isBefore(LocalDateTime.now().plusHours(2))) {
             throw new ConditionsNotMetException("Дата события должна быть не ранее чем через 2 часа от текущего момента");

@@ -18,8 +18,6 @@ import ru.practicum.exception.ConflictException;
 import ru.practicum.exception.NotFoundException;
 import ru.practicum.feign.RequestServiceFeign;
 import ru.practicum.feign.UserServiceFeign;
-import ru.practicum.RecommendationGrpcClient;  // новый клиент
-import ru.practicum.ewm.stats.avro.ActionTypeAvro;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -34,7 +32,6 @@ public class PublicEventServiceImpl implements PublicEventService {
     private final EventRepository eventRepository;
     private final RequestServiceFeign requestServiceFeign;
     private final UserServiceFeign userServiceFeign;
-    private final RecommendationGrpcClient recommendationGrpcClient; // вместо StatsClient
 
     @Override
     public List<Event> getPublicEvents(String text, List<Long> categories, Boolean paid,
@@ -48,17 +45,13 @@ public class PublicEventServiceImpl implements PublicEventService {
         if (Boolean.TRUE.equals(onlyAvailable)) {
             events = filterOnlyAvailable(events);
         }
-        List<Event> result = applySorting(events, sort);
-        // Удалён вызов saveHit – статистика больше не отправляется здесь
-        return result;
+        return events;
     }
 
     @Override
     public Event getPublicEventById(Long eventId, HttpServletRequest request) {
-        Event event = eventRepository.findByIdAndState(eventId, EventState.PUBLISHED)
+        return eventRepository.findByIdAndState(eventId, EventState.PUBLISHED)
                 .orElseThrow(() -> new NotFoundException("Событие с id=" + eventId + " не найдено"));
-        // Отправка просмотра теперь выполняется в контроллере, чтобы иметь userId из заголовка
-        return event;
     }
 
     @Override
@@ -73,28 +66,12 @@ public class PublicEventServiceImpl implements PublicEventService {
 
     @Override
     public Double getRatingForEvent(Event event) {
-        if (event == null) return 0.0;
-        List<Long> eventIds = List.of(event.getId());
-        Map<Long, Double> ratings = getRatingsForEvents(List.of(event));
-        return ratings.getOrDefault(event.getId(), 0.0);
+        return 0.0;
     }
 
     @Override
     public Map<Long, Double> getRatingsForEvents(List<Event> events) {
-        if (events == null || events.isEmpty()) return Map.of();
-        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
-        try {
-            // Получаем сумму взаимодействий через gRPC
-            var protoList = recommendationGrpcClient.getInteractionsCount(eventIds);
-            return protoList.stream()
-                    .collect(Collectors.toMap(
-                            proto -> proto.getEventId(),
-                            proto -> proto.getScore()
-                    ));
-        } catch (Exception e) {
-            log.warn("Не удалось получить рейтинги для событий: {}", e.getMessage());
-            return Map.of();
-        }
+        return Map.of();
     }
 
     @Override
@@ -143,7 +120,6 @@ public class PublicEventServiceImpl implements PublicEventService {
         return eventRepository.findAllById(ids);
     }
 
-
     private void validateDateRange(LocalDateTime start, LocalDateTime end) {
         if (start != null && end != null && start.isAfter(end)) {
             throw new IllegalArgumentException("Дата начала не может быть позже даты окончания");
@@ -165,10 +141,6 @@ public class PublicEventServiceImpl implements PublicEventService {
         if (event.getParticipantLimit() == 0) return true;
         long confirmed = (long) requestServiceFeign.getAllByEventIdInAndStatus(1L, List.of(event.getId()), RequestStatus.CONFIRMED).size();
         return confirmed < event.getParticipantLimit();
-    }
-
-    private List<Event> applySorting(List<Event> events, String sort) {
-        return events;
     }
 
     private Event findPublishedEventById(Long eventId) {
