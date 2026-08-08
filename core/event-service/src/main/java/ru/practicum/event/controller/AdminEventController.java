@@ -68,7 +68,7 @@ public class AdminEventController {
         Map<Long, Long> confirmedMap = getConfirmedRequestsCounts(events);
 
         // Получаем рейтинги через сервис
-        Map<Long, Double> ratingMap = adminEventService.getRatingsForEvents(events); // нужно добавить метод в сервис
+        Map<Long, Double> ratingMap = adminEventService.getRatingsForEvents(events);
 
         return events.stream()
                 .map(event -> {
