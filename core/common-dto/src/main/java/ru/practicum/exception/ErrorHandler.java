@@ -3,7 +3,6 @@ package ru.practicum.exception;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,10 +18,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 @RestControllerAdvice
-@Slf4j
 @RequiredArgsConstructor
 public class ErrorHandler {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ErrorHandler.class);
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private final ObjectMapper objectMapper;
 
@@ -37,7 +36,7 @@ public class ErrorHandler {
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ApiError> handleMissingServletRequestParameterException(final MissingServletRequestParameterException e) {
         log.info("400 {}", e.getMessage(), e);
-        ApiError apiError = buildApiError(HttpStatus.BAD_REQUEST, "Required request parameter for method parameter is not present.", e.getMessage(), e);
+        ApiError apiError = buildApiError(HttpStatus.BAD_REQUEST, "Required request parameter is missing.", e.getMessage(), e);
         return new ResponseEntity<>(apiError, HttpStatus.BAD_REQUEST);
     }
 
@@ -94,13 +93,13 @@ public class ErrorHandler {
     }
 
     private ApiError buildApiError(HttpStatus status, String reason, String message, Exception e) {
-        return ApiError.builder()
-                .status(status)
-                .reason(reason)
-                .message(message)
-                .timestamp(LocalDateTime.now().format(FORMATTER))
-                .stackTrace(getStackTrace(e))
-                .build();
+        return new ApiError(
+                status,
+                reason,
+                message,
+                LocalDateTime.now().format(FORMATTER),
+                getStackTrace(e)
+        );
     }
 
     private String getStackTrace(Exception e) {

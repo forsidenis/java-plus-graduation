@@ -21,16 +21,15 @@ public interface PublicEventService {
 
     Long getConfirmedRequestsCount(Long eventId);
 
-    Long getViewsForEvent(Event event);
+    Double getRatingForEvent(Event event);
+
+    Map<Long, Double> getRatingsForEvents(List<Event> events);
 
     Map<Long, Long> getConfirmedRequestsCounts(List<Long> eventIds);
-
-    Map<Long, Long> getViewsForEvents(List<Event> events);
 
     UserShortDto getEventInitiator(Event event);
 
     Map<Long, UserShortDto> getEventInitiators(List<Event> events);
 
     List<Event> getEventsByIds(List<Long> ids);
-
 }

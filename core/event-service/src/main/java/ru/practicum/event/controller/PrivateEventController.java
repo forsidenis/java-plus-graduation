@@ -47,7 +47,7 @@ public class PrivateEventController {
         UserDto user = userServiceFeign.getUser(userId);
         Event event = privateEventService.createEvent(userId, dto, user);
 
-        return EventMapper.toFullDto(event, 0L, 0L,
+        return EventMapper.toFullDto(event, 0L, 0.0,
                 new UserShortDto(user.getId(), user.getName()));
     }
 
@@ -66,15 +66,16 @@ public class PrivateEventController {
 
         Map<Long, Long> confirmedMap = getConfirmedRequestsCounts(events);
 
-        Map<Long, Long> viewsMap = privateEventService.getViewsForEvents(events);
+        // Получаем рейтинги
+        Map<Long, Double> ratingMap = privateEventService.getRatingsForEvents(events);
 
         UserShortDto initiator = new UserShortDto(user.getId(), user.getName());
 
         return events.stream()
                 .map(event -> {
                     Long confirmedRequests = confirmedMap.getOrDefault(event.getId(), 0L);
-                    Long views = viewsMap.getOrDefault(event.getId(), 0L);
-                    return EventMapper.toShortDto(event, confirmedRequests, views, initiator);
+                    Double rating = ratingMap.getOrDefault(event.getId(), 0.0);
+                    return EventMapper.toShortDto(event, confirmedRequests, rating, initiator);
                 })
                 .collect(Collectors.toList());
     }
@@ -88,10 +89,9 @@ public class PrivateEventController {
         Event event = privateEventService.getUserEventById(userId, eventId);
 
         Long confirmedRequests = getConfirmedRequestsCount(eventId);
+        Double rating = privateEventService.getRatingForEvent(event);
 
-        Long views = privateEventService.getViewsForEvent(event);
-
-        return EventMapper.toFullDto(event, confirmedRequests, views,
+        return EventMapper.toFullDto(event, confirmedRequests, rating,
                 new UserShortDto(user.getId(), user.getName()));
     }
 
@@ -105,10 +105,9 @@ public class PrivateEventController {
         Event event = privateEventService.updateUserEvent(userId, eventId, dto);
 
         Long confirmedRequests = getConfirmedRequestsCount(eventId);
+        Double rating = privateEventService.getRatingForEvent(event);
 
-        Long views = privateEventService.getViewsForEvent(event);
-
-        return EventMapper.toFullDto(event, confirmedRequests, views,
+        return EventMapper.toFullDto(event, confirmedRequests, rating,
                 new UserShortDto(user.getId(), user.getName()));
     }
 
@@ -127,7 +126,6 @@ public class PrivateEventController {
         return requestServiceFeign.updateEventRequestsStatus(userId, eventId, updateRequest);
     }
 
-
     private Long getConfirmedRequestsCount(Long eventId) {
         return (long) requestServiceFeign.getAllByEventIdInAndStatus(1L, List.of(eventId), RequestStatus.CONFIRMED).size();
     }
@@ -136,11 +134,9 @@ public class PrivateEventController {
         if (events == null || events.isEmpty()) {
             return Map.of();
         }
-
         List<Long> eventIds = events.stream()
                 .map(Event::getId)
                 .collect(Collectors.toList());
-
         return requestServiceFeign
                 .getAllByEventIdInAndStatus(1L, eventIds, RequestStatus.CONFIRMED)
                 .stream()

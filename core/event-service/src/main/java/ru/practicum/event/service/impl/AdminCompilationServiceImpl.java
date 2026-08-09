@@ -13,10 +13,8 @@ import ru.practicum.event.repository.CompilationRepository;
 import ru.practicum.event.repository.EventRepository;
 import ru.practicum.event.service.AdminCompilationService;
 import ru.practicum.exception.NotFoundException;
-import ru.practicum.stat.client.StatsClient;
-import ru.practicum.stat.dto.ViewStatsDto;
+import ru.practicum.RecommendationGrpcClient;
 
-import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +28,7 @@ public class AdminCompilationServiceImpl implements AdminCompilationService {
 
     private final CompilationRepository compilationRepository;
     private final EventRepository eventRepository;
-    private final StatsClient statsClient;
+    private final RecommendationGrpcClient recommendationGrpcClient;
 
     @Override
     @Transactional
@@ -62,20 +60,20 @@ public class AdminCompilationServiceImpl implements AdminCompilationService {
     }
 
     @Override
-    public Map<Long, Long> getViewsForEvents(List<Event> events) {
+    public Map<Long, Double> getRatingsForEvents(List<Event> events) {
         if (events == null || events.isEmpty()) return Map.of();
-        LocalDateTime earliest = events.stream()
-                .map(e -> e.getPublishedOn() != null ? e.getPublishedOn() : e.getCreatedOn())
-                .min(LocalDateTime::compareTo)
-                .orElse(LocalDateTime.now().minusYears(10));
-        List<String> uris = events.stream().map(e -> "/events/" + e.getId()).toList();
-        List<ViewStatsDto> stats = statsClient.getStats(earliest, LocalDateTime.now(), uris, false);
-        return stats.stream()
-                .collect(Collectors.toMap(
-                        v -> Long.parseLong(v.getUri().substring(v.getUri().lastIndexOf('/') + 1)),
-                        ViewStatsDto::getHits,
-                        (a, b) -> a
-                ));
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+        try {
+            var protoList = recommendationGrpcClient.getInteractionsCount(eventIds);
+            return protoList.stream()
+                    .collect(Collectors.toMap(
+                            proto -> proto.getEventId(),
+                            proto -> proto.getScore()
+                    ));
+        } catch (Exception e) {
+            log.warn("Не удалось получить рейтинги для событий подборки: {}", e.getMessage());
+            return Map.of();
+        }
     }
 
     private Compilation findCompilationById(Long compId) {

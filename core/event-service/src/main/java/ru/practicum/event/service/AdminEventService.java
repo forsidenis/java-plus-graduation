@@ -6,6 +6,7 @@ import ru.practicum.event.model.Event;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public interface AdminEventService {
 
@@ -14,5 +15,7 @@ public interface AdminEventService {
 
     Event updateAdminEvent(Long eventId, UpdateEventAdminRequest dto);
 
-    Long getViewsForEvent(Event event);
+    Double getRatingForEvent(Event event);
+
+    Map<Long, Double> getRatingsForEvents(List<Event> events);
 }
